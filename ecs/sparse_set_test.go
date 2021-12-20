@@ -7,8 +7,12 @@ import (
 	"time"
 )
 
+type T struct {
+	V uint64
+}
+
 func TestArray(t *testing.T) {
-	var a = MakeArray(1024, 0)
+	var a = MakeArray[T](1024, 0)
 	var i1 = a.Set(101, T{V: 3})
 	var i2 = a.Set(102, T{V: 4})
 	fmt.Println(a.Free())
@@ -29,7 +33,7 @@ func TestArray(t *testing.T) {
 }
 
 func TestSparse(t *testing.T) {
-	var a = MakeSparseArray(8)
+	var a = MakeSparseArray[T](8)
 	a.grow()
 	a.grow()
 	//fmt.Printf("%d %v\n", len(a.chucks), a.freeBits)
@@ -56,7 +60,7 @@ func TestSparse(t *testing.T) {
 }
 
 func TestParallel(t *testing.T) {
-	var a = MakeSparseArray(1024)
+	var a = MakeSparseArray[T](1024)
 	for i := 0; i < 10000000; i++ {
 		a.Set(23, 3, T{V: uint64(i)})
 	}

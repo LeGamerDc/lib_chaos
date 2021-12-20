@@ -16,27 +16,22 @@ func IdTag(id int64) int32 {
 	return int32(id & tagMask)
 }
 
-type T struct {
-	_pad [0]uint8
-	V    uint64
-}
-
-type SparseArray struct {
-	chucks   []*Array
+type SparseArray[T any] struct {
+	chucks   []*Array[T]
 	freeBits []uint64
 
 	chuckSize int32
 }
 
-func MakeSparseArray(chuckSize int32) *SparseArray {
-	return &SparseArray{
+func MakeSparseArray[T any](chuckSize int32) *SparseArray[T] {
+	return &SparseArray[T]{
 		chuckSize: chuckSize,
 	}
 }
 
-func (s *SparseArray) grow() {
+func (s *SparseArray[T]) grow() {
 	var base = int32(len(s.chucks)) * s.chuckSize
-	s.chucks = append(s.chucks, MakeArray(s.chuckSize, base))
+	s.chucks = append(s.chucks, MakeArray[T](s.chuckSize, base))
 	if len(s.freeBits)*64 < len(s.chucks) {
 		s.freeBits = append(s.freeBits, 1)
 	} else {
@@ -46,7 +41,7 @@ func (s *SparseArray) grow() {
 	}
 }
 
-func (s *SparseArray) free() (*Array, int32) {
+func (s *SparseArray[T]) free() (*Array[T], int32) {
 	for i, b := range s.freeBits {
 		if b != 0 {
 			j := bits.TrailingZeros64(b)
@@ -60,7 +55,7 @@ func (s *SparseArray) free() (*Array, int32) {
 	return nil, -1
 }
 
-func (s *SparseArray) Get(i int64) *T {
+func (s *SparseArray[T]) Get(i int64) *T {
 	var idx = _idx(i)
 	idx.index >>= tagBit
 	var p = idx.index / s.chuckSize
@@ -68,7 +63,7 @@ func (s *SparseArray) Get(i int64) *T {
 	return s.chucks[p].Get(idx)
 }
 
-func (s *SparseArray) Place(check int32, tag int32) (int64, *T) {
+func (s *SparseArray[T]) Place(check int32, tag int32) (int64, *T) {
 	var arr, p = s.free()
 	if p == -1 {
 		s.grow()
@@ -82,7 +77,7 @@ func (s *SparseArray) Place(check int32, tag int32) (int64, *T) {
 	return _id(idx), place
 }
 
-func (s *SparseArray) Set(check int32, tag int32, v T) int64 {
+func (s *SparseArray[T]) Set(check int32, tag int32, v T) int64 {
 	var arr, p = s.free()
 	if p == -1 {
 		s.grow()
@@ -96,7 +91,7 @@ func (s *SparseArray) Set(check int32, tag int32, v T) int64 {
 	return _id(idx)
 }
 
-func (s *SparseArray) Remove(i int64) bool {
+func (s *SparseArray[T]) Remove(i int64) bool {
 	var idx = _idx(i)
 	idx.index >>= tagBit
 	var p = idx.index / s.chuckSize
@@ -110,13 +105,13 @@ func (s *SparseArray) Remove(i int64) bool {
 	return false
 }
 
-func (s *SparseArray) Foreach(f func(*T)) {
+func (s *SparseArray[T]) Foreach(f func(*T)) {
 	for _, a := range s.chucks {
 		a.Foreach(f)
 	}
 }
 
-func (s *SparseArray) ParForeach(f func(*T), threads int64) {
+func (s *SparseArray[T]) ParForeach(f func(*T), threads int64) {
 	var wg sync.WaitGroup
 	var g = common.SimplePool(threads)
 	for _, c := range s.chucks {
@@ -130,12 +125,12 @@ func (s *SparseArray) ParForeach(f func(*T), threads int64) {
 	wg.Wait()
 }
 
-func (s *SparseArray) setFull(p int32) {
+func (s *SparseArray[T]) setFull(p int32) {
 	var i, j = p / 64, p % 64
 	s.freeBits[i] &= ^(1 << j)
 }
 
-func (s *SparseArray) setFree(p int32) {
+func (s *SparseArray[T]) setFree(p int32) {
 	var i, j = p / 64, p % 64
 	s.freeBits[i] |= 1 << j
 }

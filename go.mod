@@ -1,6 +1,6 @@
 module lib_chaos
 
-go 1.15
+go 1.18
 
 require (
 	github.com/bytedance/gopkg v0.0.0-20210810134944-4ff9dac56940 // indirect

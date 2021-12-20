@@ -56,9 +56,9 @@ func (CallType) EnumDescriptor() ([]byte, []int) {
 }
 
 type Msg struct {
-	Seq  uint32   `protobuf:"varint,1,opt,name=Seq,json=seq,proto3" json:"Seq,omitempty"`
-	Type CallType `protobuf:"varint,2,opt,name=Type,json=type,proto3,enum=wire.CallType" json:"Type,omitempty"`
-	Api  int32    `protobuf:"varint,3,opt,name=Api,json=api,proto3" json:"Api,omitempty"`
+	Seq     uint32   `protobuf:"varint,1,opt,name=Seq,json=seq,proto3" json:"Seq,omitempty"`
+	Type    CallType `protobuf:"varint,2,opt,name=Type,json=type,proto3,enum=wire.CallType" json:"Type,omitempty"`
+	Api     int32    `protobuf:"varint,3,opt,name=Api,json=api,proto3" json:"Api,omitempty"`
 	ErrCode int32    `protobuf:"varint,4,opt,name=ErrCode,json=errCode,proto3" json:"ErrCode,omitempty"`
 	Data    []byte   `protobuf:"bytes,5,opt,name=Data,json=data,proto3" json:"Data,omitempty"`
 	Extra   []byte   `protobuf:"bytes,6,opt,name=Extra,json=extra,proto3" json:"Extra,omitempty"`
