@@ -1,24 +1,42 @@
 package main
 
 import (
-	"fmt"
 	"lib_chaos/ecs"
+	"math/rand"
 )
 
-type Char struct {
-	Name string
-	Id   int64
+const (
+	SquareSuffix = 3
+)
+
+type Square struct {
+	id       int64
+	troopCnt int64
 }
 
 func main() {
-	var s = ecs.MakeArray[Char](1024, 0)
-	s.Set(1, Char{Name: "john", Id: 1234})
-	s.Set(2, Char{Name: "lily", Id: 1324})
-	s.Set(3, Char{Name: "joe", Id: 1423})
-	fmt.Println(s.Size())
-
+	var (
+		sqs  = ecs.MakeSparseArray[Square](1024)
+		tick int32
+		m    = map[int64]int64{}
+	)
+	for tick = 0; tick < 10; tick++ {
+		for i := 0; i < 999; i++ {
+			id, sq := sqs.Place(tick, SquareSuffix)
+			sq.troopCnt = rand.Int63n(1000)
+			sq.id = id
+			m[id] = sq.troopCnt
+		}
+	}
+	for id, cnt := range m {
+		sq := sqs.Get(id)
+		if sq == nil || sq.troopCnt != cnt {
+			panic("not equal")
+		}
+	}
+	sqs.Foreach(func(sq *Square) {
+		if cnt, ok := m[sq.id]; !ok || cnt != sq.troopCnt {
+			panic("not equal")
+		}
+	})
 }
-
-//func print[T fmt.Stringer](x T) {
-//	fmt.Println(x)
-//}
