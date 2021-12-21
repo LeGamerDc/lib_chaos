@@ -1,3 +1,8 @@
+---
+layout: default
+title: sparse set
+---
+
 ## sparse set
 
 ***背景***：
