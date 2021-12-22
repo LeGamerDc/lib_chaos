@@ -1,42 +1,64 @@
 package main
 
 import (
-	"lib_chaos/ecs"
-	"math/rand"
+	"fmt"
+	"io"
+	"lib_chaos/common"
+	"lib_chaos/pb_buffer"
+	"time"
 )
 
-const (
-	SquareSuffix = 3
-)
+type Person struct {
+	name  string
+	age   int
+	house *House
+}
 
-type Square struct {
-	id       int64
-	troopCnt int64
+type House struct {
+	addr string
+	size int
+}
+
+func (p *Person) String() string {
+	if p.house != nil {
+		return fmt.Sprintf("name: %s, age %d, house:[%s]", p.name, p.age, p.house)
+	} else {
+		return fmt.Sprintf("name: %s, age %d, homeless", p.name, p.age)
+	}
+}
+
+func (h *House) String() string {
+	return fmt.Sprintf("addr: %s, size: %d", h.addr, h.size)
+}
+
+func (h *Person) XXX_Size() int { return 0 }
+func (h *Person) XXX_Marshal([]byte, bool) ([]byte, error) {
+	return []byte(h.String()), nil
 }
 
 func main() {
-	var (
-		sqs  = ecs.MakeSparseArray[Square](1024)
-		tick int32
-		m    = map[int64]int64{}
-	)
-	for tick = 0; tick < 10; tick++ {
-		for i := 0; i < 999; i++ {
-			id, sq := sqs.Place(tick, SquareSuffix)
-			sq.troopCnt = rand.Int63n(1000)
-			sq.id = id
-			m[id] = sq.troopCnt
-		}
+	var buf = new(pbBuffer.PbBuffer)
+	var p = pbBuffer.Malloc[Person](buf)
+	p.name = pbBuffer.CopyString(buf, "john")
+	p.age = 22
+	p.house = pbBuffer.Malloc[House](buf)
+	p.house.addr = pbBuffer.CopyString(buf, "天府新区-兴隆湖-xx街-21-1")
+	p.house.size = 169
+
+	var c = common.NewPbConcurrentBuf(p)
+	c.Inc(4)
+	for i := 1; i <= 4; i++ {
+		var ch = make(chan common.PbMsg, 1)
+		go func(x int) {
+			time.Sleep(time.Second * time.Duration(x))
+			m := <-ch
+			data, _ := m.XXX_Marshal(nil, false)
+			fmt.Printf("g %d: %s\n", x, string(data))
+			if mc, ok := m.(io.Closer); ok {
+				_ = mc.Close()
+			}
+		}(i)
+		ch <- c
 	}
-	for id, cnt := range m {
-		sq := sqs.Get(id)
-		if sq == nil || sq.troopCnt != cnt {
-			panic("not equal")
-		}
-	}
-	sqs.Foreach(func(sq *Square) {
-		if cnt, ok := m[sq.id]; !ok || cnt != sq.troopCnt {
-			panic("not equal")
-		}
-	})
+	time.Sleep(time.Second * 6)
 }

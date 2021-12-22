@@ -64,6 +64,7 @@ func MallocSlice[T any](buf *PbBuffer, l, c int) []T {
 	return *(*[]T)(unsafe.Pointer(hdr))
 }
 
+// CopyString reference strings.Clone
 func CopyString(buf *PbBuffer, s string) string {
 	var (
 		size = len(s)
