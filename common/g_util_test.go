@@ -29,3 +29,12 @@ func TestMin(t *testing.T) {
 		t.Error("not equal")
 	}
 }
+
+func TestMap(t *testing.T) {
+	var s = []int{3, 5, 7, 9, 2, 4, 6, 8, 7}
+	var m = ToSet(s)
+	var s2 = MapKeys(m)
+	if !Contains(s, s2) || !Contains(s2, s) {
+		t.Error("not equal")
+	}
+}

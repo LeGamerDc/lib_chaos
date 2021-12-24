@@ -2,8 +2,8 @@ package ecs
 
 import "unsafe"
 
-// check must be positive to ensure Index.Id to be positive
-// embed 8 bit in index lower bits
+// check must be positive to ensure int64(Index) to be positive
+// embed 8 bit in Index.index lower bits
 
 type Index struct {
 	index, check int32

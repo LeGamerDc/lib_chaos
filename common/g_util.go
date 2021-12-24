@@ -49,3 +49,39 @@ func GetMin[T constraints.Ordered](xs []T) T {
 	}
 	return m
 }
+
+// Index return array index if found, else return -1
+func Index[T comparable](xs []T, y T) int {
+	for i, x := range xs {
+		if x == y {
+			return i
+		}
+	}
+	return -1
+}
+
+func MapKeys[K comparable, V any](m map[K]V) []K {
+	var a = make([]K, 0, len(m))
+	for k := range m {
+		a = append(a, k)
+	}
+	return a
+}
+
+func ToSet[K comparable](a []K) map[K]struct{} {
+	var m = make(map[K]struct{}, len(a))
+	for _, k := range a {
+		m[k] = struct{}{}
+	}
+	return m
+}
+
+func Contains[T comparable](a, b []T) bool {
+	var m = ToSet(a)
+	for _, x := range b {
+		if _, ok := m[x]; !ok {
+			return false
+		}
+	}
+	return true
+}
