@@ -1,28 +1,29 @@
 package sx
 
 import (
-	"github.com/bytedance/gopkg/lang/mcache"
-	"lib_chaos/sx/wire"
+	"fmt"
+	"lib_chaos/common"
 	"net"
 	"runtime"
+	"sync/atomic"
 	"time"
 )
 
+//
+
 type Message struct {
-	raw     []byte
-	gogo    wire.Gogo
-	recycle bool
+	raw []byte
+	ctl int32 // 0: no recycle, 1: direct recycle, 2: ref-count recycle
+	ref int32
 }
 
 type sx struct {
-	// control
 	q    chan *Message
 	quit chan struct{}
 
-	// data
-	conn net.Conn
-	buf  []*Message
-	data [][]byte
+	conn   net.Conn
+	buf    []*Message
+	_block [][]byte
 }
 
 func NewSx(conn net.Conn) *sx {
@@ -43,22 +44,22 @@ func (s *sx) Start() {
 	}
 }
 
-func (s *sx) Send(data []byte) {
-	var m = messagePool.Get().(*Message)
-	m.raw = data
+func (s *sx) SendRaw(raw []byte) {
+	s.q <- &Message{
+		raw: raw,
+	}
+}
+
+func (s *sx) SendMsg(m *Message) {
 	s.q <- m
 }
 
-func getData(m *Message) []byte {
-	if len(m.raw) > 0 {
-		return m.raw
+func (s *sx) Close() {
+	close(s.q)
+	select {
+	case <-time.After(time.Second * 5):
+	case <-s.quit:
 	}
-	var s = m.gogo.XXX_Size()
-	var data = mcache.Malloc(s + 4)
-	_, _ = m.gogo.XXX_Marshal(data, false)
-	m.recycle = true
-	m.raw = data
-	return data[:s+4]
 }
 
 func (s *sx) loop() (quit bool) {
@@ -76,98 +77,35 @@ Loop:
 			break Loop
 		}
 	}
-
-	var err error
+	var e error
 	if len(s.buf) == 1 {
-		var data = getData(s.buf[0])
-		_, err = s.conn.Write(data)
+		_, e = s.conn.Write(s.buf[0].raw)
 	} else {
 		for _, m := range s.buf {
-			s.data = append(s.data, getData(m))
+			s._block = append(s._block, m.raw)
 		}
-		var tmp = s.data
-		_, err = (*net.Buffers)(&tmp).WriteTo(s.conn)
-
-		// clean s.data
-		for i := 0; i < len(s.data); i++ {
-			s.data[i] = nil
+		var tmp = s._block // avoid update s._block
+		_, e = (*net.Buffers)(&tmp).WriteTo(s.conn)
+		for i := 0; i < len(s._block); i++ { // compiler optimized
+			s._block[i] = nil
 		}
-		s.data = s.data[0:0]
-	}
-	// clean s.buf
-	for _, m := range s.buf {
-		if m.recycle {
-			mcache.Free(m.raw)
-		}
-		messagePool.Put(m)
+		s._block = s._block[0:0]
 	}
 	for i := 0; i < len(s.buf); i++ {
+		switch s.buf[i].ctl {
+		case 0: // do nothing
+		case 1: // recycle
+			common.Free(s.buf[i].raw)
+		case 2:
+			if atomic.AddInt32(&s.buf[i].ref, -1) == 0 { // recycle
+				common.Free(s.buf[i].raw)
+			}
+		}
 		s.buf[i] = nil
 	}
 	s.buf = s.buf[0:0]
-
-	if err != nil {
-		return true
+	if e != nil {
+		fmt.Printf("sx write fail: %s", e.Error())
 	}
-	return
+	return quit || e != nil
 }
-
-func (s *sx) Close() {
-	close(s.q)
-	select {
-	case <-time.After(time.Second * 5):
-	case <-s.quit:
-	}
-}
-
-//func (s *sx) Start2() {
-//    defer close(s.quit)
-//    for m := range s.q {
-//        _, err := s.conn.Write(m.raw)
-//        if err != nil {
-//            return
-//        }
-//    }
-//}
-//
-//func (s *sx) Start3() {
-//    defer close(s.quit)
-//    for m := range s.q {
-//        if s.loop2(m.raw) {
-//            break
-//        }
-//    }
-//}
-//func (s *sx) loop2(first []byte) (quit bool) {
-//    runtime.Gosched()
-//    var buf *p.ByteBuffer
-//Loop:
-//    for {
-//        select {
-//        case m, ok := <- s.q:
-//            if !ok {
-//                quit = true
-//                break Loop
-//            }
-//            if buf == nil {
-//                buf = pool.Get()
-//                _, _ = buf.Write(first)
-//            }
-//            _, _ = buf.Write(m.raw)
-//        default:
-//            break Loop
-//        }
-//    }
-//    var err error
-//    if buf != nil {
-//        _, err = s.conn.Write(buf.Bytes())
-//        pool.Put(buf)
-//    } else {
-//        _, err = s.conn.Write(first)
-//    }
-//    if err != nil {
-//        return true
-//    }
-//    return
-//}
-//var pool = p.Pool{}

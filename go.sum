@@ -13,6 +13,8 @@ github.com/bytedance/gopkg v0.0.0-20210705062217-74c74ebadcae h1:ERLYTdHnm2E8jwp
 github.com/bytedance/gopkg v0.0.0-20210705062217-74c74ebadcae/go.mod h1:birsdqRCbwnckJbdAvcSao+AzOyibVEoWB55MjpYpB8=
 github.com/bytedance/gopkg v0.0.0-20210810134944-4ff9dac56940 h1:Wa6flKSf/l3a4BMkm9XygzWXXajMOLIhrHLh0AFyW+M=
 github.com/bytedance/gopkg v0.0.0-20210810134944-4ff9dac56940/go.mod h1:birsdqRCbwnckJbdAvcSao+AzOyibVEoWB55MjpYpB8=
+github.com/bytedance/gopkg v0.0.0-20211117073611-9a8af3eefa95 h1:b66sEfs3oHWxeOgJbZYGmA8UZoUoqyvCxY1RkBLzVjI=
+github.com/bytedance/gopkg v0.0.0-20211117073611-9a8af3eefa95/go.mod h1:birsdqRCbwnckJbdAvcSao+AzOyibVEoWB55MjpYpB8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=

@@ -3,7 +3,7 @@ module lib_chaos
 go 1.18
 
 require (
-	github.com/bytedance/gopkg v0.0.0-20210810134944-4ff9dac56940 // indirect
+	github.com/bytedance/gopkg v0.0.0-20211117073611-9a8af3eefa95 // indirect
 	github.com/cloudwego/netpoll v0.0.3 // indirect
 	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/fogleman/ln v0.0.0-20170223135521-12e6c6e74459 // indirect
