@@ -22,24 +22,24 @@ func alloc(buf *PbBuffer, align, size int) unsafe.Pointer {
 		page  *[]byte
 		index int
 	)
-	if size > pageSize { // size > page size
+	if size > pageSize { // 1. size > page size
 		buf.buf = append(buf.buf, make([]byte, 0, size))
 		page = &buf.buf[l]
 	} else {
 		for i := 0; i < l; i++ {
 			index = _align(len(buf.buf[i]), align)
 			//fmt.Println(len(buf.buf[i]), align, index)
-			if index+size <= pageSize { // find page to place
+			if index+size <= pageSize { // 2. find page to place
 				page = &buf.buf[i]
 			}
 		}
-		if page == nil { // new page to place
+		if page == nil { // 3. new page to place
 			buf.buf = append(buf.buf, pagePool.Get().([]byte))
 			page = &buf.buf[l]
 			index = 0
 		}
 	}
-	*page = (*page)[0 : index+size]
+	*page = (*page)[:index+size]
 	return unsafe.Pointer(&(*page)[index])
 }
 

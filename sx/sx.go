@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-//
+// sx gather []byte and send by writev to reduce syscall.
+// sx could cooperate with mcache in reuse []byte, you should
+// send *Message and use Message.ctl to tell sx how to reuse []byte.
 
 type Message struct {
 	raw []byte

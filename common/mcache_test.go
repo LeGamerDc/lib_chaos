@@ -1,16 +1,18 @@
 package common
 
 import (
+	"fmt"
 	"testing"
 )
 
 func TestTable(t *testing.T) {
-	for i := 0; i <= 32768; i++ {
+	for i := 0; i <= 4096; i++ {
 		var c = sizeClass(i)
 		if class[c] < i {
 			t.Errorf("error for %d, class: %d, size: %d", i, c, class[c])
 		}
 	}
+	fmt.Println("test table finish")
 }
 
 func BenchmarkSwitch(b *testing.B) {
