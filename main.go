@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
-	"lib_chaos/common"
+	"unsafe"
 )
 
+type A struct {
+	a int
+	b byte
+}
+
 func main() {
-	fmt.Println(common.GetSmallSizeTable())
-	fmt.Println(common.GetLargeSizeTable())
+	fmt.Println(unsafe.Sizeof(A{}))
 }

@@ -20,7 +20,7 @@ func vDist(a, b Vert) float64 {
 	var dx = b.X - a.X
 	var dy = b.Y - a.Y
 	var dz = b.Z - a.Z
-	return float64(math.Sqrt(float64(dx*dx + dy*dy + dz*dz)))
+	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }
 
 func vEqual(a, b Vert) bool {
