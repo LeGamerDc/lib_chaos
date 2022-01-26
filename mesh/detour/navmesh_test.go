@@ -1,30 +1,31 @@
-package pathfinding
+package detour
 
 import (
 	"fmt"
+	"lib_chaos/mesh"
 	"testing"
 )
 
-type Path []Vert
+type Path []mesh.Vert
 
 func (p *Path) Append(x, y, z float64) {
-	*p = append(*p, Vert{
+	*p = append(*p, mesh.Vert{
 		X: x,
 		Y: y,
 		Z: z,
 	})
 }
 
-func (p *Path) LastPos() Vert {
+func (p *Path) LastPos() mesh.Vert {
 	return (*p)[len(*p)-1]
 }
 
 func initMesh() *NavMesh {
 	var nav = new(NavMesh)
-	nav.MVert = make([]Vert, 36)
+	nav.MVert = make([]mesh.Vert, 36)
 	for r := 0; r < 6; r++ {
 		for c := 0; c < 6; c++ {
-			nav.MVert[r*6+c] = Vert{
+			nav.MVert[r*6+c] = mesh.Vert{
 				X: float64(c),
 				Z: float64(r),
 			}
@@ -92,17 +93,17 @@ func initMesh() *NavMesh {
 
 func TestHeight(t *testing.T) {
 	var (
-		v0 = Vert{X: 0, Z: 0}
-		v1 = Vert{X: 1, Z: 0}
-		v2 = Vert{X: 0, Z: 1}
-		p  = Vert{X: 0.2, Y: 1, Z: 0.2}
+		v0 = mesh.Vert{X: 0, Z: 0}
+		v1 = mesh.Vert{X: 1, Z: 0}
+		v2 = mesh.Vert{X: 0, Z: 1}
+		p  = mesh.Vert{X: 0.2, Y: 1, Z: 0.2}
 	)
-	fmt.Println(vHeightOnTriangle(p, v0, v1, v2))
+	fmt.Println(mesh.VHeightOnTriangle(p, v0, v1, v2))
 }
 
 func TestNavMesh_LocatePoly(t *testing.T) {
 	var nav = initMesh()
-	fmt.Println(nav.LocatePoly(Vert{
+	fmt.Println(nav.LocatePoly(mesh.Vert{
 		X: 0.5,
 		Y: 0.5,
 	}))
@@ -112,10 +113,10 @@ func TestNavMesh(t *testing.T) {
 	var nav = initMesh()
 	var q = NewQuery(nav, 100)
 	var p Path
-	fmt.Println(q.FindPath(Vert{
+	fmt.Println(q.FindPath(mesh.Vert{
 		X: 0.5,
 		Z: 0.5,
-	}, Vert{
+	}, mesh.Vert{
 		X: 4.5,
 		Z: 4.5,
 	}, &p))

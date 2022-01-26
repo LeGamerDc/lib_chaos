@@ -1,4 +1,4 @@
-package pathfinding
+package detour
 
 var (
 	empty = node{}

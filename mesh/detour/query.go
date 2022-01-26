@@ -1,6 +1,9 @@
-package pathfinding
+package detour
 
-import "fmt"
+import (
+	"fmt"
+	"lib_chaos/mesh"
+)
 
 type Query struct {
 	nodePath  []int32
@@ -11,7 +14,7 @@ type Query struct {
 
 type QueryResult interface {
 	Append(x, y, z float64)
-	LastPos() Vert
+	LastPos() mesh.Vert
 }
 
 func NewQuery(mesh *NavMesh, size int32) *Query {
@@ -27,7 +30,7 @@ func (q *Query) clear() {
 	q.nodeQueue.clear()
 }
 
-func (q *Query) FindPath(startPos, endPos Vert, result QueryResult) bool {
+func (q *Query) FindPath(startPos, endPos mesh.Vert, result QueryResult) bool {
 	var (
 		startRef, endRef int32
 		ok               bool
@@ -42,14 +45,14 @@ func (q *Query) FindPath(startPos, endPos Vert, result QueryResult) bool {
 	return q.pullPath(startRef, endRef, startPos, endPos, result)
 }
 
-func (q *Query) appendPortal(startIndex, endIndex int, endPos Vert, result QueryResult) (ok bool) {
+func (q *Query) appendPortal(startIndex, endIndex int, endPos mesh.Vert, result QueryResult) (ok bool) {
 	var (
 		startPos    = result.LastPos()
 		fr, tr      int32
 		fp, tp      *Poly
-		left, right Vert
+		left, right mesh.Vert
 		k           float64
-		pos         Vert
+		pos         mesh.Vert
 	)
 	for i := startIndex; i < endIndex; i++ {
 		fr = q.nodePath[i]
@@ -63,23 +66,23 @@ func (q *Query) appendPortal(startIndex, endIndex int, endPos Vert, result Query
 		if !ok {
 			return
 		}
-		_, k, ok = intersectSegSeg2D(startPos, endPos, left, right)
+		_, k, ok = mesh.IntersectSegSeg2D(startPos, endPos, left, right)
 		if !ok {
 			return
 		}
-		pos = vInter(left, right, k)
+		pos = mesh.VInter(left, right, k)
 		result.Append(pos.X, pos.Y, pos.Z)
 	}
 	return true
 }
 
-func (q *Query) pullPath(startRef, endRef int32, startPos, endPos Vert, result QueryResult) bool {
+func (q *Query) pullPath(startRef, endRef int32, startPos, endPos mesh.Vert, result QueryResult) bool {
 	result.Append(startPos.X, startPos.Y, startPos.Z)
 	var finalRef int32 = -1
 	if len(q.nodePath) > 1 {
 		var (
-			portalApex, portalLeft, portalRight Vert
-			left, right                         Vert
+			portalApex, portalLeft, portalRight mesh.Vert
+			left, right                         mesh.Vert
 			apexIndex, leftIndex, rightIndex    int
 			ok                                  bool
 		)
@@ -90,15 +93,15 @@ func (q *Query) pullPath(startRef, endRef int32, startPos, endPos Vert, result Q
 					return false
 				}
 				// portalApex on segment of portal
-				if _, d := distPtSegSqr2D(portalApex, left, right); d < eqs {
+				if _, d := mesh.DistPtSegSqr2D(portalApex, left, right); d < mesh.Eqs {
 					continue
 				}
 			} else {
 				left, right = endPos, endPos
 			}
 			// handle left
-			if triArea2D(portalApex, portalLeft, left) >= 0 { // tighten left
-				if vEqual(portalApex, portalLeft) || triArea2D(portalApex, portalRight, left) < eps*eps {
+			if mesh.TriArea2D(portalApex, portalLeft, left) >= 0 { // tighten left
+				if mesh.VEqual(portalApex, portalLeft) || mesh.TriArea2D(portalApex, portalRight, left) < mesh.Eps*mesh.Eps {
 					portalLeft = left
 				} else {
 					if !q.appendPortal(apexIndex, rightIndex, portalRight, result) {
@@ -115,8 +118,8 @@ func (q *Query) pullPath(startRef, endRef int32, startPos, endPos Vert, result Q
 				}
 			}
 			// handle right
-			if triArea2D(portalApex, portalRight, right) <= 0 { //tighten right
-				if vEqual(portalApex, portalRight) || triArea2D(portalApex, portalLeft, right) > -eps*eps {
+			if mesh.TriArea2D(portalApex, portalRight, right) <= 0 { //tighten right
+				if mesh.VEqual(portalApex, portalRight) || mesh.TriArea2D(portalApex, portalLeft, right) > -mesh.Eps*mesh.Eps {
 					portalRight = right
 				} else {
 					if !q.appendPortal(apexIndex, leftIndex, portalLeft, result) {
@@ -143,11 +146,11 @@ func (q *Query) pullPath(startRef, endRef int32, startPos, endPos Vert, result Q
 	return true
 }
 
-func (q *Query) findPath(startRef, endRef int32, startPos, endPos Vert) (
+func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (
 	partial, outOfNodes, success bool) {
 	var (
 		startNode        = q.nodePool.getNode(startRef)
-		lastBestNodeCost = vDist(startPos, endPos)
+		lastBestNodeCost = mesh.VDist(startPos, endPos)
 		lastBestNode     = startNode
 		bestNode         *dtNode
 		neighborNode     *dtNode
@@ -197,11 +200,11 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos Vert) (
 
 			// calculate cost + heuristic
 			if neighborRef == endRef {
-				cost = bestNode.cost + vDist(bestNode.pos, neighborNode.pos) + vDist(neighborNode.pos, endPos)
+				cost = bestNode.cost + mesh.VDist(bestNode.pos, neighborNode.pos) + mesh.VDist(neighborNode.pos, endPos)
 				heuristic = 0
 			} else {
-				cost = bestNode.cost + vDist(bestNode.pos, neighborNode.pos)
-				heuristic = vDist(neighborNode.pos, endPos)
+				cost = bestNode.cost + mesh.VDist(bestNode.pos, neighborNode.pos)
+				heuristic = mesh.VDist(neighborNode.pos, endPos)
 			}
 			total = cost + heuristic
 

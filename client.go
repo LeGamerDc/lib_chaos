@@ -27,7 +27,7 @@ func try() {
 		var s = rn()
 		var header = make([]byte, 4)
 		binary.BigEndian.PutUint32(header, uint32(len(s)))
-		send.Send(append(header, s...))
+		send.SendRaw(append(header, s...))
 	}
 }
 

@@ -1,7 +1,8 @@
-package pathfinding
+package detour
 
 import (
 	"container/heap"
+	"lib_chaos/mesh"
 	"unsafe"
 )
 
@@ -13,7 +14,7 @@ const (
 )
 
 type dtNode struct {
-	pos    Vert
+	pos    mesh.Vert
 	cost   float64    // g
 	total  float64    // g+h
 	pIdx   int32      // parent node
