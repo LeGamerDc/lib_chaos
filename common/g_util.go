@@ -50,6 +50,15 @@ func GetMin[T constraints.Ordered](xs []T) T {
 	return m
 }
 
+func EraseOnce[T comparable](xs []T, x T) []T {
+	for i, v := range xs {
+		if v == x {
+			return append(xs[:i], xs[i+1:]...)
+		}
+	}
+	return xs
+}
+
 // Index return array index if found, else return -1
 func Index[T comparable](xs []T, y T) int {
 	for i, x := range xs {

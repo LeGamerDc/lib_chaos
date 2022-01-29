@@ -1,4 +1,4 @@
-package tr
+package tra
 
 import "fmt"
 

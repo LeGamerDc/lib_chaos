@@ -1,6 +1,7 @@
 package mesh
 
 import (
+	"lib_chaos/common"
 	"math"
 )
 
@@ -9,7 +10,7 @@ type Vert struct {
 }
 
 const (
-	Eps      = 0.01
+	Eps      = 0.001
 	Eqs      = Eps * Eps // sqr of Eps
 	BigFloat = 100000000.0
 )
@@ -106,8 +107,8 @@ func IntersectSegSeg2D(ap, aq, bp, bq Vert) (s, t float64, ok bool) {
 	return s, t, true
 }
 
-// RotatePtThroughSeg2D rotate pt around segment
-func RotatePtThroughSeg2D(a, p, q Vert) (b Vert) {
+// ReflectPtThroughSeg2D rotate pt around segment
+func ReflectPtThroughSeg2D(a, p, q Vert) (b Vert) {
 	var (
 		pq  = VSub(q, p)
 		r   = VSqrt2D(pq)
@@ -124,7 +125,7 @@ func RotatePtThroughSeg2D(a, p, q Vert) (b Vert) {
 func DistPtPtThroughSeg2D(a, b Vert, p, q Vert) float64 {
 	var s, t, ok = IntersectSegSeg2D(a, b, p, q)
 	if !ok || s < 0 || s > 1 { // a b on same side of p-q
-		b = RotatePtThroughSeg2D(b, p, q)
+		b = ReflectPtThroughSeg2D(b, p, q)
 		s, t, ok = IntersectSegSeg2D(a, b, p, q) // use reflect b over seg p-q
 	}
 	if !ok || (t >= 0 && t <= 1) {
@@ -139,7 +140,7 @@ func DistPtPtThroughSeg2D(a, b Vert, p, q Vert) float64 {
 
 // VCrossXz cross product of a,b on plane xz
 func VCrossXz(a, b Vert) float64 {
-	return a.X*b.Z - a.Z*b.X
+	return a.Z*b.X - a.X*b.Z
 }
 
 func VInter(a, b Vert, k float64) Vert {
@@ -168,8 +169,16 @@ func VHeightOnTriangle(p, a, b, c Vert) (h float64, ok bool) {
 		d, u, v = -d, -u, -v
 	}
 	if u >= 0 && v >= 0 && (u+v) <= d {
-		h = a.Y + (ab.Y*u+ac.Y*v)/d
+		h = a.Y + (ab.Y*v+ac.Y*u)/d
 		return h, true
 	}
+	return
+}
+
+func TriBox2D(a, b, c Vert) (min, max Vert) {
+	min.X = common.MinN(a.X, b.X, c.X)
+	min.Z = common.MinN(a.Z, b.Z, c.Z)
+	max.X = common.MaxN(a.X, b.X, c.X)
+	max.Z = common.MaxN(a.Z, b.Z, c.Z)
 	return
 }

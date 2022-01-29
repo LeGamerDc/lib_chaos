@@ -1,4 +1,4 @@
-package tr
+package tra
 
 import "lib_chaos/mesh"
 
@@ -6,7 +6,7 @@ type Tri struct {
 	Ref     int32 // self Tri index
 	Link    int32 // first Link index
 	GroupId int32
-	Vs      [3]int32
+	Vs      [3]int32 // vertex of triangle, in clock-wise
 }
 
 type Link struct {

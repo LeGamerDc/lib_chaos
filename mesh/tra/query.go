@@ -1,4 +1,4 @@
-package tr
+package tra
 
 import "lib_chaos/mesh"
 
@@ -172,8 +172,8 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (ou
 		}
 	}
 END:
-	if outOfNodes {
-		return
+	if outOfNodes || node.ref != endRef {
+		return true
 	}
 	// retrieve path
 	var length = 1
