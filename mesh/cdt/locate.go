@@ -25,18 +25,30 @@ type Locator struct {
 }
 
 func (l *Locator) Init(min, max mesh.Vert, nx, nz int32) {
+	var (
+		sx = (max.X - min.X) / float64(nx)
+		sz = (max.Z - min.Z) / float64(nz)
+	)
 	*l = Locator{
 		min: min,
 		max: max,
 		nx:  nx,
 		nz:  nz,
-		sx:  (max.X - min.X) / float64(nx),
-		sz:  (max.Z - min.Z) / float64(nz),
+		sx:  sx,
+		sz:  sz,
 	}
 	var grid = make([][]Grid, nx)
 	for x := range grid {
 		grid[x] = make([]Grid, nz)
+		for z := 0; z < int(nz); z++ {
+			grid[x][z] = Grid{
+				min: mesh.Vert{X: min.X + float64(x)*sx, Z: min.Z + float64(z)*sz},
+				max: mesh.Vert{X: min.X + float64(x+1)*sx, Z: min.Z + float64(z+1)*sz},
+				tri: make(map[TriIndex]struct{}),
+			}
+		}
 	}
+	l.grid = grid
 }
 
 func (l *Locator) pos(v mesh.Vert) (x, z int32) {
@@ -92,19 +104,39 @@ func (l *Locator) Locate(v mesh.Vert, get func(index TriIndex) (v0, v1, v2 mesh.
 // test collide between rectangle(min, max) of triangle(v0, v1, v2)
 func collideTest(min, max, v0, v1, v2 mesh.Vert) bool {
 	var (
-		r0 = mesh.Vert{X: min.X, Z: min.Z}
-		r1 = mesh.Vert{X: max.X, Z: min.Z}
-		r2 = mesh.Vert{X: max.X, Z: max.Z}
-		r3 = mesh.Vert{X: min.X, Z: max.Z}
+		r0      = mesh.Vert{X: min.X, Z: min.Z}
+		r1      = mesh.Vert{X: max.X, Z: min.Z}
+		r2      = mesh.Vert{X: max.X, Z: max.Z}
+		r3      = mesh.Vert{X: min.X, Z: max.Z}
+		collide = cross(r0, r1, v0, v1) || cross(r0, r1, v1, v2) || cross(r0, r1, v2, v0) ||
+			cross(r1, r2, v0, v1) || cross(r1, r2, v1, v2) || cross(r1, r2, v2, v0) ||
+			cross(r2, r3, v0, v1) || cross(r2, r3, v1, v2) || cross(r2, r3, v2, v0) ||
+			cross(r3, r0, v0, v1) || cross(r3, r0, v1, v2) || cross(r3, r0, v2, v0)
+		contain = rectContain(min, max, v0) || rectContain(min, max, v1) || rectContain(min, max, v2) ||
+			triContain(v0, v1, v2, r0) || triContain(v0, v1, v2, r1) || triContain(v0, v1, v2, r2) ||
+			triContain(v0, v1, v2, r3)
 	)
-	return cross(r0, r1, v0, v1) || cross(r0, r1, v1, v2) || cross(r0, r1, v2, v0) ||
-		cross(r1, r2, v0, v1) || cross(r1, r2, v1, v2) || cross(r1, r2, v2, v0) ||
-		cross(r2, r3, v0, v1) || cross(r2, r3, v1, v2) || cross(r2, r3, v2, v0) ||
-		cross(r3, r0, v0, v1) || cross(r3, r0, v1, v2) || cross(r3, r0, v2, v0)
+	return collide || contain
 }
 func cross(a, b, p, q mesh.Vert) bool {
 	var s, t, ok = mesh.IntersectSegSeg2D(a, b, p, q)
 	return ok && s >= 0 && s <= 1 && t >= 0 && t <= 1
+}
+
+func rectContain(min, max, v mesh.Vert) bool {
+	return v.X >= min.X && v.X <= max.X && v.Z >= min.Z && v.Z <= max.Z
+}
+
+func triContain(v0, v1, v2, v mesh.Vert) bool {
+
+	var (
+		d0  = mesh.VCrossXz(mesh.VSub(v1, v0), mesh.VSub(v, v0))
+		d1  = mesh.VCrossXz(mesh.VSub(v2, v1), mesh.VSub(v, v1))
+		d2  = mesh.VCrossXz(mesh.VSub(v0, v2), mesh.VSub(v, v2))
+		pos = d0 > 0 || d1 > 0 || d2 > 0
+		neg = d0 < 0 || d1 < 0 || d2 < 0
+	)
+	return !(pos && neg)
 }
 
 func locateTriangle(p, a, b, c mesh.Vert) int32 {

@@ -140,7 +140,7 @@ func DistPtPtThroughSeg2D(a, b Vert, p, q Vert) float64 {
 
 // VCrossXz cross product of a,b on plane xz
 func VCrossXz(a, b Vert) float64 {
-	return a.Z*b.X - a.X*b.Z
+	return a.X*b.Z - b.X*a.Z
 }
 
 func VInter(a, b Vert, k float64) Vert {
@@ -181,4 +181,16 @@ func TriBox2D(a, b, c Vert) (min, max Vert) {
 	max.X = common.MaxN(a.X, b.X, c.X)
 	max.Z = common.MaxN(a.Z, b.Z, c.Z)
 	return
+}
+
+func InTriOuterCircle(v, v0, v1, v2 Vert) bool {
+	var (
+		ma, mc  = VInter(v0, v1, 0.5), VInter(v0, v2, 0.5)
+		va, vc  = VSub(v1, v0), VSub(v2, v0)
+		ta, tc  = Vert{X: va.Z, Y: va.Y, Z: -va.X}, Vert{X: vc.Z, Y: vc.Y, Z: -vc.X}
+		na, nc  = VAdd(ma, ta), VAdd(mc, tc)
+		s, _, _ = IntersectSegSeg2D(ma, na, mc, nc)
+		center  = VInter(ma, na, s)
+	)
+	return VDist(center, v) <= VDist(center, v0)-Eps
 }

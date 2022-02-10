@@ -50,6 +50,14 @@ func GetMin[T constraints.Ordered](xs []T) T {
 	return m
 }
 
+func Reverse[T any](xs []T) {
+	var l = len(xs)
+	for i := 0; i < l/2; i++ {
+		j := l - 1 - i
+		xs[i], xs[j] = xs[j], xs[i]
+	}
+}
+
 func EraseOnce[T comparable](xs []T, x T) []T {
 	for i, v := range xs {
 		if v == x {
