@@ -20,8 +20,8 @@ func BuildTr(nav *NavMesh) *Tr {
 	)
 	f.init(len(nav.MTri))
 	// build group
-	var dfs func(int32)
-	dfs = func(i int32) {
+	var dfs func(int32, int32)
+	dfs = func(i, from int32) {
 		var (
 			t     = &nav.MTri[i]
 			merge = nav.countEdge(i) < 3
@@ -32,30 +32,35 @@ func BuildTr(nav *NavMesh) *Tr {
 				ni = nav.MLink[l].ToRef
 				nt = &nav.MTri[ni]
 			)
+			if ni == from { // skip father
+				continue
+			}
 			if nt.GroupId != 0 { // already visited -> find big group
 				f.union(i, ni)
-				big[f.find(i)] = struct{}{}
 				continue
 			}
 			if merge && nav.countEdge(ni) < 3 { // follow group
 				f.union(i, ni)
 			}
-			dfs(ni)
+			dfs(ni, i)
 		}
 	}
 	for i := range nav.MTri {
 		var t = &nav.MTri[i]
 		if t.GroupId == 0 {
-			dfs(int32(i))
+			dfs(int32(i), -1)
 		}
 	}
+	//for i := range nav.MTri {
+	//	fmt.Printf("%d ", f.find(int32(i)))
+	//}
 	// build tree
 	var (
-		dfs2 func(int32)
+		dfs2 func(int32, int32)
 		inc  int32
 		m    = make(map[int32]int32)
 	)
-	dfs2 = func(i int32) {
+	dfs2 = func(i, from int32) {
 		var (
 			fi = f.find(i)
 			t  = &nav.MTri[i]
@@ -73,19 +78,24 @@ func BuildTr(nav *NavMesh) *Tr {
 				nfi = f.find(ni)
 				nt  = &nav.MTri[ni]
 			)
+			if ni == from {
+				continue
+			}
 			if nt.GroupId >= 0 { // visited
 				if nfi != fi { // bugs !!!
 					fmt.Println("tree bugs")
 				}
+				big[t.GroupId] = struct{}{}
+				fmt.Println(i, "->", ni)
 				continue
 			}
-			dfs2(ni)
+			dfs2(ni, i)
 		}
 	}
 	for i := range nav.MTri {
 		var t = &nav.MTri[i]
 		if t.GroupId < 0 {
-			dfs(int32(i))
+			dfs2(int32(i), -1)
 		}
 	}
 	var tree = make([]treeNode, inc)
@@ -112,10 +122,11 @@ func BuildTr(nav *NavMesh) *Tr {
 		}
 	}
 	for i := range big {
-		g := m[i]
-		tree[g].big = true
+		tree[i].big = true
 	}
-	return &Tr{tree: tree}
+	var tr = &Tr{tree: tree}
+	nav.cache = tr
+	return tr
 }
 
 type set struct {
@@ -134,7 +145,6 @@ func (s *set) find(a int32) int32 {
 		if fa == a {
 			return a
 		}
-		s.f[a] = s.f[fa]
 		a = fa
 	}
 }

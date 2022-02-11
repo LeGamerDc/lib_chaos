@@ -1,6 +1,7 @@
 package cdt
 
 import (
+	"fmt"
 	"lib_chaos/mesh"
 )
 
@@ -90,8 +91,11 @@ func (l *Locator) Remove(id TriIndex, v0, v1, v2 mesh.Vert) {
 func (l *Locator) Locate(v mesh.Vert, get func(index TriIndex) (v0, v1, v2 mesh.Vert)) (i TriIndex, loc int32) {
 	var (
 		x, z = l.pos(v)
-		g    = l.grid[x][z]
 	)
+	if x < 0 || int(x) >= len(l.grid) || z < 0 || int(z) >= len(l.grid[0]) {
+		panic(fmt.Sprintf("locate fail %f %f", v.X, v.Z))
+	}
+	var g = l.grid[x][z]
 	for i = range g.tri {
 		var v0, v1, v2 = get(i)
 		if loc = locateTriangle(v, v0, v1, v2); loc != LocationOutside {
@@ -101,7 +105,7 @@ func (l *Locator) Locate(v mesh.Vert, get func(index TriIndex) (v0, v1, v2 mesh.
 	return -1, LocationOutside
 }
 
-// test collide between rectangle(min, max) of triangle(v0, v1, v2)
+// test collide between rectangle(min, Max) of triangle(v0, v1, v2)
 func collideTest(min, max, v0, v1, v2 mesh.Vert) bool {
 	var (
 		r0      = mesh.Vert{X: min.X, Z: min.Z}

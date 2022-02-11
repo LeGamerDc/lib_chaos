@@ -17,7 +17,7 @@ func (t *Triangle) points(cdt *CDT) string {
 
 func (cdt *CDT) Svg() *bytes.Buffer {
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf(head, cdt.max.Z, cdt.max.X))
+	buf.WriteString(fmt.Sprintf(head, cdt.Max.Z, cdt.Max.X))
 	for i, t := range cdt.MTri {
 		if t.v0 >= 0 {
 			buf.WriteString(fmt.Sprintf("<polygon points=\"%s\" style=\"fill:none;stroke:blue;stroke-width:0.2\"/>\n", t.points(cdt)))

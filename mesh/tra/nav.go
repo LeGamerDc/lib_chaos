@@ -22,6 +22,25 @@ type NavMesh struct {
 	cache *Tr
 }
 
+func (nav *NavMesh) InsertEdge(t0, t1 int32, e int32) {
+	var l = len(nav.MLink)
+	nav.MLink = append(nav.MLink, Link{
+		ToRef: t1,
+		Next:  nav.MTri[t0].Link,
+		Edge:  e,
+	})
+	nav.MTri[t0].Link = int32(l)
+}
+
+func (nav *NavMesh) Ns(it int32) (ns []int32) {
+	var l = nav.MTri[it].Link
+	for l != -1 {
+		ns = append(ns, nav.MLink[l].ToRef)
+		l = nav.MLink[l].Next
+	}
+	return
+}
+
 func (nav *NavMesh) countEdge(i int32) (n int) {
 	var l = nav.MTri[i].Link
 	for ; l != -1; l = nav.MLink[l].Next {

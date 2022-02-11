@@ -12,6 +12,7 @@ func (cdt *CDT) Shrink() {
 		m  = make(map[TriIndex]TriIndex)
 		id TriIndex
 	)
+	m[-1] = -1
 	for it := range cdt.MTri {
 		var t = &cdt.MTri[it]
 		if t.v0 >= 0 { // not dummy

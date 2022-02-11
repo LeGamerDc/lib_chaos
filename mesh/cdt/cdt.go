@@ -1,6 +1,7 @@
 package cdt
 
 import (
+	"fmt"
 	"lib_chaos/common"
 	"lib_chaos/mesh"
 	"math"
@@ -15,6 +16,16 @@ type Triangle struct {
 	v0, v1, v2 VertIndex // vert index, counter clock-wise in x-z plane
 	n0, n1, n2 TriIndex  // neighbor triangle index
 }
+
+func (t *Triangle) Vs() (v0, v1, v2 int32) {
+	v0, v1, v2 = int32(t.v0), int32(t.v1), int32(t.v2)
+	return
+}
+func (t *Triangle) Ns() (n0, n1, n2 int32) {
+	n0, n1, n2 = int32(t.n0), int32(t.n1), int32(t.n2)
+	return
+}
+
 type Edge struct {
 	v0, v1 VertIndex
 }
@@ -28,7 +39,7 @@ type CDT struct {
 	locator   *Locator
 	mNeighbor [][]TriIndex // adjacent triangles to vert
 	mDummy    []TriIndex
-	max       mesh.Vert
+	Max       mesh.Vert
 }
 
 func (cdt *CDT) Init(min, max mesh.Vert, np int) {
@@ -39,7 +50,7 @@ func (cdt *CDT) Init(min, max mesh.Vert, np int) {
 		v3       = mesh.Vert{X: min.X, Z: max.Z}
 		it0, it1 = cdt.newTriangle(), cdt.newTriangle()
 	)
-	cdt.max = max
+	cdt.Max = max
 	cdt.mNeighbor = make([][]TriIndex, 4+np)
 	cdt.MVert = make([]mesh.Vert, 0, 4+np)
 	cdt.MVert = append(cdt.MVert, v0, v1, v2, v3)
@@ -86,7 +97,7 @@ func (cdt *CDT) insertVert(iv VertIndex) {
 			it  = affects[l]
 			ito = cdt.opposedTri(it, iv)
 		)
-		affects = affects[0:l]
+		affects = affects[:l]
 		if ito == -1 {
 			continue
 		}
@@ -115,31 +126,33 @@ func (cdt *CDT) insertVert(iv VertIndex) {
  */
 func (cdt *CDT) flip(it0, it1 TriIndex) {
 	var (
-		iv1 = cdt.opposedVert(it1, it0)
-		iv3 = cdt.opposedVert(it0, it1)
-		iv0 = cdt.triNextVert(it0, iv3)
-		iv2 = cdt.triNextVert(it1, iv1)
-		n2  = cdt.opposedTri(it0, iv2)
-		n3  = cdt.opposedTri(it0, iv0)
-		n0  = cdt.opposedTri(it1, iv2)
-		n1  = cdt.opposedTri(it1, iv0)
+		iv0 = cdt.opposedVert(it0, it1)
+		iv2 = cdt.opposedVert(it1, it0)
+		iv1 = cdt.triNextVert(it0, iv0)
+		iv3 = cdt.triNextVert(it1, iv2)
+		n0  = cdt.opposedTri(it0, iv3)
+		n2  = cdt.opposedTri(it0, iv1)
+		n1  = cdt.opposedTri(it1, iv3)
+		n3  = cdt.opposedTri(it1, iv1)
 	)
 	// update triangle t0 t1
-	cdt.locator.Remove(it0, cdt.MVert[iv0], cdt.MVert[iv2], cdt.MVert[iv3])
-	cdt.MTri[it0] = Triangle{v0: iv0, v1: iv1, v2: iv3, n0: n0, n1: it1, n2: n2}
-	cdt.locator.Insert(it0, cdt.MVert[iv0], cdt.MVert[iv1], cdt.MVert[iv3])
+	cdt.locator.Remove(it0, cdt.MVert[iv0], cdt.MVert[iv1], cdt.MVert[iv3])
+	cdt.MTri[it0] = Triangle{v0: iv0, v1: iv2, v2: iv3, n0: it1, n1: n3, n2: n2}
+	cdt.locator.Insert(it0, cdt.MVert[iv0], cdt.MVert[iv2], cdt.MVert[iv3])
 
-	cdt.locator.Remove(it1, cdt.MVert[iv0], cdt.MVert[iv1], cdt.MVert[iv2])
-	cdt.MTri[it1] = Triangle{v0: iv1, v1: iv2, v2: iv3, n0: n1, n1: n3, n2: it0}
-	cdt.locator.Insert(it1, cdt.MVert[iv1], cdt.MVert[iv2], cdt.MVert[iv3])
+	cdt.locator.Remove(it1, cdt.MVert[iv1], cdt.MVert[iv2], cdt.MVert[iv3])
+	cdt.MTri[it1] = Triangle{v0: iv0, v1: iv1, v2: iv2, n0: n0, n1: n1, n2: it0}
+	cdt.locator.Insert(it1, cdt.MVert[iv0], cdt.MVert[iv1], cdt.MVert[iv2])
 
-	// update neighbor
-	cdt.changeTriNeighbor(n0, it1, it0)
-	cdt.changeTriNeighbor(n3, it0, it1)
-	cdt.removeVertNeighbor(iv0, it1)
-	cdt.removeVertNeighbor(iv2, it0)
-	cdt.insertVertNeighbor(iv1, it0)
-	cdt.insertVertNeighbor(iv3, it1)
+	// update tri neighbor
+	cdt.changeTriNeighbor(n0, it0, it1)
+	cdt.changeTriNeighbor(n3, it1, it0)
+
+	// update vert neighbor
+	cdt.removeVertNeighbor(iv1, it0)
+	cdt.removeVertNeighbor(iv3, it1)
+	cdt.insertVertNeighbor(iv0, it1)
+	cdt.insertVertNeighbor(iv2, it0)
 }
 
 func (cdt *CDT) needFlip(iv VertIndex, it TriIndex) bool {
@@ -197,7 +210,7 @@ func (cdt *CDT) insertVertInTriangle(iv VertIndex, it TriIndex) []TriIndex {
 }
 
 /* Inserting a point on the edge between two triangles
- *    T1 (top)        v0
+ *    T0 (top)        v0
  *                   /|\
  *              n0 /  |  \ n3
  *               /    |    \
@@ -207,7 +220,7 @@ func (cdt *CDT) insertVertInTriangle(iv VertIndex, it TriIndex) []TriIndex {
  *               \    |    /
  *              n1 \  |  / n2
  *                   \|/
- *   T2 (bottom)      v2
+ *   T1 (bottom)      v2
  */
 func (cdt *CDT) insertVertOnEdge(iv VertIndex, it0, it1 TriIndex) []TriIndex {
 	var (
@@ -254,7 +267,7 @@ func (cdt *CDT) insertVertOnEdge(iv VertIndex, it0, it1 TriIndex) []TriIndex {
 }
 
 func (cdt *CDT) newTriangle() TriIndex {
-	cdt.MTri = append(cdt.MTri, Triangle{})
+	cdt.MTri = append(cdt.MTri, dummyTriangle)
 	return TriIndex(len(cdt.MTri) - 1)
 }
 func (cdt *CDT) insertVertNeighbor(iv VertIndex, its ...TriIndex) {
@@ -323,7 +336,7 @@ func (cdt *CDT) locatePoint(pos mesh.Vert) (it0, it1 TriIndex) {
 	})
 	switch loc {
 	case LocationOutside:
-		panic("locate point fail")
+		panic(fmt.Sprintf("locate point fail %f %f", pos.X, pos.Z))
 	case LocationInside:
 		return it0, -1
 	case LocationEdge0:
