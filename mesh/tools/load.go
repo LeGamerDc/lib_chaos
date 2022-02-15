@@ -22,8 +22,8 @@ func read() *cdt.CDT {
 		if e != nil {
 			panic(fmt.Sprintf("v %d %s", i, e.Error()))
 		}
-		//x *= 10
-		//z *= 10
+		x *= 100
+		z *= 100
 		ps = append(ps, mesh.Vert{X: x, Z: z})
 		min.X = math.Min(min.X, x)
 		min.Z = math.Min(min.Z, z)
@@ -35,9 +35,8 @@ func read() *cdt.CDT {
 	max.X = max.X + 200
 	max.Z = max.Z + 200
 	c.Init(min, max, nv)
-	for i := 0; i < nv; i++ {
-		c.InsertVert(mesh.Vert{X: ps[i].X, Z: ps[i].Z})
-	}
+	c.InsertVerts(ps)
+	c.Report()
 	for i := 0; i < ne; i++ {
 		var a, b cdt.VertIndex
 		_, e := fmt.Scan(&a, &b)
@@ -46,7 +45,8 @@ func read() *cdt.CDT {
 		}
 		a += 4
 		b += 4
-		c.InsertEdge(b, a, true)
+		c.InsertEdge(b, a)
+		//c.Report()
 		//fmt.Printf("[e %d]\n", i)
 	}
 	c.Culling()

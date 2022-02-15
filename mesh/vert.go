@@ -3,6 +3,7 @@ package mesh
 import (
 	"lib_chaos/common"
 	"math"
+	"math/rand"
 )
 
 type Vert struct {
@@ -10,7 +11,7 @@ type Vert struct {
 }
 
 const (
-	Eps      = 0.001
+	Eps      = 0.0001
 	Eqs      = Eps * Eps // sqr of Eps
 	BigFloat = 100000000.0
 )
@@ -46,6 +47,14 @@ func VAdd(a, b Vert) Vert {
 		X: a.X + b.X,
 		Y: a.Y + b.Y,
 		Z: a.Z + b.Z,
+	}
+}
+
+func VMul(a Vert, k float64) Vert {
+	return Vert{
+		X: k * a.X,
+		Y: k * a.Y,
+		Z: k * a.Z,
 	}
 }
 
@@ -149,6 +158,19 @@ func VInter(a, b Vert, k float64) Vert {
 		Y: a.Y + (b.Y-a.Y)*k,
 		Z: a.Z + (b.Z-a.Z)*k,
 	}
+}
+
+func TriRandomPoint(a, b, c Vert) Vert {
+	var (
+		ab     = VSub(b, a)
+		ac     = VSub(c, a)
+		ub, uc = rand.Float64(), rand.Float64()
+	)
+	if ub+uc >= 1 {
+		ub = 1 - ub
+		uc = 1 - uc
+	}
+	return VAdd(a, VAdd(VMul(ab, ub), VMul(ac, uc)))
 }
 
 func VHeightOnTriangle(p, a, b, c Vert) (h float64, ok bool) {

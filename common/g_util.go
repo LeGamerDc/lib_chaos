@@ -102,3 +102,32 @@ func Contains[T comparable](a, b []T) bool {
 	}
 	return true
 }
+
+func Union[K comparable](a, b map[K]struct{}) map[K]struct{} {
+	var c = make(map[K]struct{}, len(a)+len(b))
+	for k := range a {
+		c[k] = struct{}{}
+	}
+	for k := range b {
+		c[k] = struct{}{}
+	}
+	return c
+}
+
+func Intersection[K comparable](a, b map[K]struct{}) map[K]struct{} {
+	var c = make(map[K]struct{})
+	for k := range a {
+		if _, ok := b[k]; ok {
+			c[k] = struct{}{}
+		}
+	}
+	return c
+}
+
+func ToSlice[K comparable](a map[K]struct{}) []K {
+	var s = make([]K, 0, len(a))
+	for k := range a {
+		s = append(s, k)
+	}
+	return s
+}

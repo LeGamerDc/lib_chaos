@@ -1,13 +1,15 @@
 package tra
 
-import "lib_chaos/mesh"
+import (
+	"lib_chaos/mesh"
+)
 
 type Query struct {
 	mesh *NavMesh
 
 	nodePool  *trNodePool
 	nodeQueue *trNodeQueue
-	path      []mesh.Vert
+	Path      []mesh.Vert
 }
 
 func NewQuery(mesh *NavMesh, size int32) *Query {
@@ -23,7 +25,7 @@ func (q *Query) clear() {
 	q.nodeQueue.clear()
 }
 
-func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (outOfNodes bool) {
+func (q *Query) FindPath(startRef, endRef int32, startPos, endPos mesh.Vert) (outOfNodes bool) {
 	var (
 		tri          = &q.mesh.MTri[startRef]
 		node         *trNode
@@ -53,21 +55,23 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (ou
 	}
 	for !q.nodeQueue.empty() {
 		node = q.nodeQueue.pop()
-		if node.ref == endRef { // path found !
+		if node.ref == endRef { // Path found !
 			break
 		}
 		ref = node.ref
 		tri = &q.mesh.MTri[ref]
 		idx = q.nodePool.getIdx(node)
+		//if node.pIdx == -1 {
+		//	fmt.Printf("-1 -> %d\n", ref)
+		//} else {
+		//	fmt.Printf("%d -> %d\n", q.nodePool.getNodeAtIdx(node.pIdx).ref, ref)
+		//}
 		left, right, turn = node.l, node.r, node.turn
 		for l := tri.Link; l != -1; l = q.mesh.MLink[l].Next {
 			neighborRef = q.mesh.MLink[l].ToRef
-			if q.nodePool.exist(idx, neighborRef, func(i int32) bool {
-				return false // todo: only check current group
-			}) { // skip walked path
+			if q.nodePool.exist(idx, neighborRef) { // skip walked Path
 				continue
 			}
-			// todo: find path through group path
 			var ll, rr, _ = q.mesh.getPortal(ref, neighborRef)
 			// case 1: turn on left-right
 			if _, ds := mesh.DistPtSegSqr2D(turn, left, right); ds < mesh.Eqs {
@@ -82,7 +86,7 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (ou
 					r:     rr,
 					cost:  node.cost,
 					total: node.cost + mesh.DistPtPtThroughSeg2D(turn, endPos, ll, rr),
-					pIdx:  node.pIdx,
+					pIdx:  idx,
 					ref:   neighborRef,
 				}
 				q.nodeQueue.push(neighborNode)
@@ -97,8 +101,8 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (ou
 				)
 				if mesh.TriArea2D(turn, left, rr) < -mesh.Eqs {
 					finish = false
-					var _, t, _ = mesh.IntersectSegSeg2D(turn, left, rr, ll)
-					cut = mesh.VInter(rr, ll, t)
+					var _, t, _ = mesh.IntersectSegSeg2D(turn, left, ll, rr)
+					cut = mesh.VInter(ll, rr, t)
 				}
 				neighborNode = q.nodePool.getNode()
 				if neighborNode == nil {
@@ -112,7 +116,7 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (ou
 					r:     cut,
 					cost:  cost,
 					total: cost + mesh.DistPtPtThroughSeg2D(left, endPos, ll, cut),
-					pIdx:  q.nodePool.getIdx(node),
+					pIdx:  idx,
 					ref:   neighborRef,
 				}
 				q.nodeQueue.push(neighborNode)
@@ -144,7 +148,7 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (ou
 					r:     rr,
 					cost:  cost,
 					total: cost + mesh.DistPtPtThroughSeg2D(right, endPos, cut, rr),
-					pIdx:  q.nodePool.getIdx(node),
+					pIdx:  idx,
 					ref:   neighborRef,
 				}
 				q.nodeQueue.push(neighborNode)
@@ -165,7 +169,7 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (ou
 				r:     rCut,
 				cost:  node.cost,
 				total: node.cost + mesh.DistPtPtThroughSeg2D(turn, endPos, lCut, rCut),
-				pIdx:  q.nodePool.getIdx(node),
+				pIdx:  idx,
 				ref:   neighborRef,
 			}
 			q.nodeQueue.push(neighborNode)
@@ -175,21 +179,21 @@ END:
 	if outOfNodes || node.ref != endRef {
 		return true
 	}
-	// retrieve path
+	// retrieve Path
 	var length = 1
 	for n := node; n != nil; n = q.nodePool.getNodeAtIdx(n.pIdx) {
 		length++
 	}
-	if cap(q.path) < length {
-		q.path = make([]mesh.Vert, length)
+	if cap(q.Path) < length {
+		q.Path = make([]mesh.Vert, length)
 	} else {
-		q.path = q.path[0:length]
+		q.Path = q.Path[0:length]
 	}
 	length--
-	q.path[length] = endPos
+	q.Path[length] = endPos
 	for n := node; n != nil; n = q.nodePool.getNodeAtIdx(n.pIdx) {
 		length--
-		q.path[length] = n.turn
+		q.Path[length] = n.turn
 	}
 	return
 }

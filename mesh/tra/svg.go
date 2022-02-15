@@ -15,22 +15,31 @@ func (t *Tri) points(nav *NavMesh) string {
 	return fmt.Sprintf("%f,%f %f,%f %f,%f", v0.X, v0.Z, v1.X, v1.Z, v2.X, v2.Z)
 }
 
-func (nav *NavMesh) Svg(max mesh.Vert) *bytes.Buffer {
+func (nav *NavMesh) Svg(max mesh.Vert, s, t mesh.Vert, path []mesh.Vert) *bytes.Buffer {
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf(head, max.Z, max.X))
 	for i, t := range nav.MTri {
 		var (
-			v0    = nav.MVert[t.Vs[0]]
-			v1    = nav.MVert[t.Vs[1]]
-			v2    = nav.MVert[t.Vs[2]]
-			c     = mesh.VAdd(mesh.VAdd(v0, v1), v2)
-			color = []string{"blue", "orange", "green"}[t.GroupId%3]
+			v0 = nav.MVert[t.Vs[0]]
+			v1 = nav.MVert[t.Vs[1]]
+			v2 = nav.MVert[t.Vs[2]]
+			c  = mesh.VAdd(mesh.VAdd(v0, v1), v2)
+			//color = []string{"blue", "orange", "green"}[t.GroupId%3]
 		)
-		if nav.cache.tree[t.GroupId].big {
-			color = "red"
-		}
-		buf.WriteString(fmt.Sprintf("<polygon points=\"%s\" style=\"fill:%s;stroke:black;stroke-width:0.2\"/>\n", t.points(nav), color))
+		//if nav.cache.tree[t.GroupId].big {
+		//	color = "red"
+		//}
+		buf.WriteString(fmt.Sprintf("<polygon points=\"%s\" style=\"fill:none;stroke:blue;stroke-width:0.2\"/>\n", t.points(nav)))
 		buf.WriteString(fmt.Sprintf("<text x=\"%f\" y=\"%f\" font-size=\"1\" fill=\"black\">(%d)</text>", c.X/3, c.Z/3, i))
+	}
+	buf.WriteString(fmt.Sprintf("<circle cx=\"%f\" cy=\"%f\" r=\"0.4\" stroke=\"black\" stroke-width=\"0.05\" fill=\"red\" />\n", s.X, s.Z))
+	buf.WriteString(fmt.Sprintf("<circle cx=\"%f\" cy=\"%f\" r=\"0.4\" stroke=\"black\" stroke-width=\"0.05\" fill=\"red\" />\n", t.X, t.Z))
+	buf.WriteString(fmt.Sprintf("<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" style=\"stroke:red;stroke-width:0.25\" />\n",
+		s.X, s.Z, t.X, t.Z))
+	for i := 1; i < len(path); i++ {
+		var v0, v1 = path[i-1], path[i]
+		buf.WriteString(fmt.Sprintf("<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" style=\"stroke:red;stroke-width:0.25\" />\n",
+			v0.X, v0.Z, v1.X, v1.Z))
 	}
 	buf.WriteString("</g></svg>")
 	return &buf

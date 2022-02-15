@@ -94,14 +94,40 @@ func (cdt *CDT) isConstrained(iv0, iv1 VertIndex) bool {
 	return false
 }
 
-func (cdt *CDT) InsertEdge(ia, ib VertIndex, ob bool) {
-	if ia == ib { // bad param
-		return
-	}
+func (cdt *CDT) fixEdge(ia, ib VertIndex, ob bool) {
+	//fmt.Printf("(%d %d) %v\n", ia, ib, ob)
 	if ob {
 		cdt.MCons[Edge{v0: ia, v1: ib}] = struct{}{}
 	}
+}
+
+func (cdt *CDT) InsertEdge(ia, ib VertIndex) {
+	//for e := range cdt.MCons {
+	//	var (
+	//		x, y     = cdt.MVert[e.v0], cdt.MVert[e.v1]
+	//		a, b     = cdt.MVert[ia], cdt.MVert[ib]
+	//		s, t, ok = mesh.IntersectSegSeg2D(a, b, x, y)
+	//	)
+	//	if ok && s >= mesh.Eps && s <= 1-mesh.Eps && t >= mesh.Eps && t <= 1-mesh.Eps {
+	//		var (
+	//			c  = mesh.VInter(a, b, s)
+	//			ic = cdt.InsertVert(c)
+	//		)
+	//		cdt.InsertEdge(ia, ic)
+	//		cdt.InsertEdge(ic, ib)
+	//		return
+	//	}
+	//}
+	cdt.insertEdge(ia, ib, true)
+}
+
+func (cdt *CDT) insertEdge(ia, ibb VertIndex, ob bool) {
+	var ib = ibb
+	if ia == ib { // bad param
+		return
+	}
 	if cdt.vertexShareTri(ia, ib) != -1 { // already edge
+		cdt.fixEdge(ia, ib, ob)
 		return
 	}
 	var (
@@ -113,6 +139,11 @@ func (cdt *CDT) InsertEdge(ia, ib VertIndex, ob bool) {
 		left       = []VertIndex{il}
 		right      = []VertIndex{ir}
 	)
+	if it == -1 {
+		cdt.fixEdge(ia, il, ob)
+		cdt.insertEdge(il, ib, ob)
+		return
+	}
 	for {
 		var (
 			itop = cdt.opposedTri(it, iv)
@@ -120,33 +151,61 @@ func (cdt *CDT) InsertEdge(ia, ib VertIndex, ob bool) {
 			vop  = cdt.MVert[ivop]
 		)
 		crossTri = append(crossTri, itop)
-		if ivop == ib {
-			break
-		}
 		it = itop
-		if mesh.VCrossXz(mesh.VSub(vb, va), mesh.VSub(vop, va)) > 0 { // left
+		var cxz = mesh.VCrossXz(mesh.VSub(vb, va), mesh.VSub(vop, va))
+		if cxz > mesh.Eqs { // left
 			left = append(left, ivop)
 			iv = il
 			il = ivop
-		} else { // right
+		} else if cxz < -mesh.Eqs { // right
 			right = append(right, ivop)
 			iv = ir
 			ir = ivop
+		} else {
+			ib = ivop
+		}
+		if ivop == ib {
+			break
 		}
 	}
-	for _, it := range crossTri {
-		cdt.makeDummy(it)
+	for _, i := range crossTri {
+		cdt.makeDummy(i)
 	}
 	// triangulate pseudo-polygons both sides
 	common.Reverse(right)
-	cdt.triangulatePseudoPolygon(ia, ib, left)
-	cdt.triangulatePseudoPolygon(ib, ia, right)
-	//var (
-	//	itl = cdt.triangulatePseudoPolygon(ia, ib, left)
-	//	itr = cdt.triangulatePseudoPolygon(ib, ia, right)
-	//)
-	//cdt.changeTriNeighbor(itl, -1, itr)
-	//cdt.changeTriNeighbor(itr, -1, itl)
+	var (
+		itl = cdt.triangulatePseudoPolygon(ia, ib, left)
+		itr = cdt.triangulatePseudoPolygon(ib, ia, right)
+	)
+	cdt.changeTriNeighbor(itl, -1, itr)
+	cdt.changeTriNeighbor(itr, -1, itl)
+	cdt.reconstructNeighbor(left)
+	cdt.reconstructNeighbor(right)
+	cdt.report("InsertEdge", itl, itr)
+	cdt.fixEdge(ia, ib, ob)
+	if ib != ibb {
+		cdt.insertEdge(ib, ibb, ob)
+	}
+}
+
+func (cdt *CDT) reconstructNeighbor(points []VertIndex) {
+	if len(points) < 3 {
+		return
+	}
+	var f = func(ia, ib VertIndex) {
+		var ts = common.ToSlice(common.Intersection(common.ToSet(cdt.mNeighbor[ia]), common.ToSet(cdt.mNeighbor[ib])))
+		if len(ts) == 2 {
+			cdt.updateOpposedNeighbor(ts[0], ts[1], ia, ib)
+			cdt.updateOpposedNeighbor(ts[1], ts[0], ia, ib)
+		} else {
+			panic("fuck 1")
+		}
+	}
+	for i := 2; i < len(points); i++ {
+		if points[i] == points[i-2] {
+			f(points[i], points[i-1])
+		}
+	}
 }
 
 func (cdt *CDT) vertexShareTri(ia, ib VertIndex) TriIndex {
@@ -167,9 +226,15 @@ func (cdt *CDT) head(ia VertIndex, neighbor []TriIndex, a, b mesh.Vert) (it TriI
 		var (
 			pl = cdt.MVert[il]
 			pr = cdt.MVert[ir]
+			cl = mesh.VCrossXz(mesh.VSub(b, a), mesh.VSub(pl, a))
+			cr = mesh.VCrossXz(mesh.VSub(b, a), mesh.VSub(pr, a))
 		)
-		if mesh.VCrossXz(mesh.VSub(b, a), mesh.VSub(pl, a)) > 0 && mesh.VCrossXz(mesh.VSub(b, a), mesh.VSub(pr, a)) < 0 {
-			return it, il, ir
+		if cr < -mesh.Eqs {
+			if cl > mesh.Eqs {
+				return it, il, ir
+			} else if cl > -mesh.Eqs {
+				return -1, il, ir
+			}
 		}
 	}
 	panic("can not find head")
@@ -201,16 +266,42 @@ func (cdt *CDT) triangulatePseudoPolygon(ia, ib VertIndex, points []VertIndex) T
 	cdt.MTri[it] = Triangle{v0: ia, v1: ib, v2: ic, n0: -1, n1: rt, n2: lt}
 	// update triangle neighbor
 	if lt != -1 {
-		cdt.updateNeighbor(lt, it, ia)
+		if len(l) == 0 {
+			cdt.updateOpposedNeighbor(lt, it, ia, ic)
+		} else {
+			cdt.updateNeighbor(lt, it, ia)
+		}
 	}
 	if rt != -1 {
-		cdt.updateNeighbor(rt, it, ic)
+		if len(r) == 0 {
+			cdt.updateOpposedNeighbor(rt, it, ib, ic)
+		} else {
+			cdt.updateNeighbor(rt, it, ic)
+		}
 	}
 	// update vertex neighbor
 	cdt.insertVertNeighbor(ia, it)
 	cdt.insertVertNeighbor(ib, it)
 	cdt.insertVertNeighbor(ic, it)
+	//cdt.report(fmt.Sprintf("triangulatePseudoPolygon %d %d %d", len(l), len(r), it), lt, rt)
 	return it
+}
+
+func (cdt *CDT) updateOpposedNeighbor(it, ito TriIndex, ia, ib VertIndex) {
+	var t = &cdt.MTri[it]
+	if cmp(ia, ib, t.v0, t.v1) {
+		t.n0 = ito
+	} else if cmp(ia, ib, t.v1, t.v2) {
+		t.n1 = ito
+	} else if cmp(ia, ib, t.v2, t.v0) {
+		t.n2 = ito
+	} else {
+		panic("fuck")
+	}
+}
+
+func cmp(a0, b0, a1, b1 VertIndex) bool {
+	return (a0 == a1 && b0 == b1) || (a0 == b1 && b0 == a1)
 }
 
 func (cdt *CDT) updateNeighbor(it, ito TriIndex, ia VertIndex) {
@@ -244,7 +335,7 @@ func (cdt *CDT) findDelaunayPoint(ia, ib VertIndex, points []VertIndex) (mid Ver
 	for idx, iv := range points[1:] {
 		var v = cdt.MVert[iv]
 		if mesh.InTriOuterCircle(v, a, b, c) {
-			i = idx
+			i = idx + 1
 			c = cdt.MVert[iv]
 		}
 	}

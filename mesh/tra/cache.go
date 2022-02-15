@@ -86,7 +86,7 @@ func BuildTr(nav *NavMesh) *Tr {
 					fmt.Println("tree bugs")
 				}
 				big[t.GroupId] = struct{}{}
-				fmt.Println(i, "->", ni)
+				//fmt.Println(i, "->", ni)
 				continue
 			}
 			dfs2(ni, i)

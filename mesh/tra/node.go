@@ -48,15 +48,13 @@ func (p *trNodePool) getNodeAtIdx(idx int32) *trNode {
 	return nil
 }
 
-func (p *trNodePool) exist(idx, ref int32, stop func(int32) bool) bool {
+func (p *trNodePool) exist(idx, ref int32) bool {
 	for idx >= 0 {
 		var node = p.mNode[idx]
-		if stop(node.ref) {
-			return false
-		}
 		if node.ref == ref {
 			return true
 		}
+		idx = node.pIdx
 	}
 	return false
 }
@@ -104,6 +102,7 @@ func newNodeQueue(size int32) *trNodeQueue {
 }
 
 func (q *trNodeQueue) push(n *trNode) {
+	//fmt.Printf("%d %f (%f %f) (%f %f)\n", n.ref, n.total, n.l.X, n.l.Z, n.r.X, n.r.Z)
 	heap.Push(&q.mHeap, n)
 }
 

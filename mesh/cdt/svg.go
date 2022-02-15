@@ -3,7 +3,6 @@ package cdt
 import (
 	"bytes"
 	"fmt"
-	"lib_chaos/mesh"
 )
 
 func (t *Triangle) points(cdt *CDT) string {
@@ -17,17 +16,18 @@ func (t *Triangle) points(cdt *CDT) string {
 
 func (cdt *CDT) Svg() *bytes.Buffer {
 	var buf bytes.Buffer
+	//fmt.Println(len(cdt.MTri), len(cdt.MCons))
 	buf.WriteString(fmt.Sprintf(head, cdt.Max.Z, cdt.Max.X))
-	for i, t := range cdt.MTri {
+	for _, t := range cdt.MTri {
 		if t.v0 >= 0 {
 			buf.WriteString(fmt.Sprintf("<polygon points=\"%s\" style=\"fill:none;stroke:blue;stroke-width:0.2\"/>\n", t.points(cdt)))
-			var (
-				v0 = cdt.MVert[t.v0]
-				v1 = cdt.MVert[t.v1]
-				v2 = cdt.MVert[t.v2]
-				c  = mesh.VAdd(mesh.VAdd(v0, v1), v2)
-			)
-			buf.WriteString(fmt.Sprintf("<text x=\"%f\" y=\"%f\" font-size=\"1\" fill=\"red\">(%d)</text>", c.X/3, c.Z/3, i))
+			//var (
+			//	v0 = cdt.MVert[t.v0]
+			//	v1 = cdt.MVert[t.v1]
+			//	v2 = cdt.MVert[t.v2]
+			//	c  = mesh.VAdd(mesh.VAdd(v0, v1), v2)
+			//)
+			//buf.WriteString(fmt.Sprintf("<text x=\"%f\" y=\"%f\" font-size=\"1\" fill=\"red\">(%d)</text>", c.X/3, c.Z/3, i))
 		}
 	}
 	for e := range cdt.MCons {
@@ -37,10 +37,47 @@ func (cdt *CDT) Svg() *bytes.Buffer {
 		)
 		buf.WriteString(fmt.Sprintf("<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" style=\"stroke:rgb(255,0,0);stroke-width:0.25\"/>\n",
 			v0.X, v0.Z, v1.X, v1.Z))
+		//buf.WriteString(fmt.Sprintf("<text x=\"%f\" y=\"%f\" font-size=\"0.5\" fill=\"red\">(%d)</text>\n", v0.X, v0.Z, e.v0))
+		//buf.WriteString(fmt.Sprintf("<text x=\"%f\" y=\"%f\" font-size=\"0.5\" fill=\"red\">(%d)</text>\n", v1.X, v1.Z, e.v1))
 	}
 	//for i, v := range cdt.MVert {
-	//	buf.WriteString(fmt.Sprintf("<text x=\"%f\" y=\"%f\" font-size=\"4\" fill=\"red\">(%d)</text>", v.X, v.Z, i-4))
+	//	buf.WriteString(fmt.Sprintf("<text x=\"%f\" y=\"%f\" font-size=\"4\" fill=\"red\">(%d)</text>\n", v.X, v.Z, i-4))
 	//}
+	//var (
+	//	visited = make(map[TriIndex]struct{})
+	//	dfs     func(index, fit TriIndex)
+	//)
+	//dfs = func(it, fit TriIndex) {
+	//	if _, ok := visited[it]; ok {
+	//		return
+	//	}
+	//	var (
+	//		t = &cdt.MTri[it]
+	//	)
+	//	if fit >= 0 {
+	//		var (
+	//			ft = &cdt.MTri[fit]
+	//			v0 = mesh.VAdd(cdt.MVert[t.v0], mesh.VAdd(cdt.MVert[t.v1], cdt.MVert[t.v2]))
+	//			v1 = mesh.VAdd(cdt.MVert[ft.v0], mesh.VAdd(cdt.MVert[ft.v1], cdt.MVert[ft.v2]))
+	//		)
+	//		buf.WriteString(fmt.Sprintf("<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" style=\"stroke:blue;stroke-width:0.2\"/>\n",
+	//			v0.X/3, v0.Z/3, v1.X/3, v1.Z/3))
+	//	}
+	//	visited[it] = struct{}{}
+	//	if t.n0 >= 0 && !cdt.isConstrained(t.v0, t.v1) {
+	//		//fmt.Printf("[%d %d]\n", t.v0, t.v1)
+	//		dfs(t.n0, it)
+	//	}
+	//	if t.n1 >= 0 && !cdt.isConstrained(t.v1, t.v2) {
+	//		//fmt.Printf("[%d %d]\n", t.v1, t.v2)
+	//		dfs(t.n1, it)
+	//	}
+	//	if t.n2 >= 0 && !cdt.isConstrained(t.v2, t.v0) {
+	//		//fmt.Printf("[%d %d]\n", t.v2, t.v0)
+	//		dfs(t.n2, it)
+	//	}
+	//}
+	//dfs(cdt.mNeighbor[0][0], -1)
 	buf.WriteString("</g></svg>")
 	return &buf
 }

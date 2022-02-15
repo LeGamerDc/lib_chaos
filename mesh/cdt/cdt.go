@@ -74,11 +74,35 @@ func (cdt *CDT) Init(min, max mesh.Vert, np int) {
 	cdt.locator.Insert(it1, v0, v2, v3)
 }
 
+func (cdt *CDT) DuplicateVert(v0 mesh.Vert) VertIndex {
+	for i, v1 := range cdt.MVert {
+		if mesh.VEqual(v0, v1) {
+			return VertIndex(i)
+		}
+	}
+	return -1
+}
+
 func (cdt *CDT) InsertVert(v mesh.Vert) VertIndex {
-	var idx = VertIndex(len(cdt.MVert))
+	var idx = cdt.DuplicateVert(v)
+	if idx != -1 {
+		return idx
+	}
+	idx = VertIndex(len(cdt.MVert))
 	cdt.MVert = append(cdt.MVert, v)
+	cdt.mNeighbor = append(cdt.mNeighbor, nil)
 	cdt.insertVert(idx)
 	return idx
+}
+
+func (cdt *CDT) InsertVerts(vs []mesh.Vert) {
+	var s = len(cdt.MVert)
+	for _, v := range vs {
+		cdt.MVert = append(cdt.MVert, v)
+	}
+	for i := s; i < len(cdt.MVert); i++ {
+		cdt.insertVert(VertIndex(i))
+	}
 }
 
 func (cdt *CDT) insertVert(iv VertIndex) {
@@ -104,6 +128,46 @@ func (cdt *CDT) insertVert(iv VertIndex) {
 		if cdt.needFlip(iv, ito) {
 			cdt.flip(it, ito)
 			affects = append(affects, it, ito)
+		}
+	}
+}
+
+func (cdt *CDT) Report() {
+	var find = func(it TriIndex, iv VertIndex) {
+		for _, n := range cdt.mNeighbor[iv] {
+			if n == it {
+				return
+			}
+		}
+		panic("wrong neighbor")
+	}
+	for it, t := range cdt.MTri {
+		if t.v0 < 4 || t.v1 < 4 || t.v2 < 4 {
+			continue
+		}
+		if t.v0 == t.v1 || t.v0 == t.v2 || t.v1 == t.v2 {
+			panic(fmt.Sprintf("wrong tri %d[%d %d %d]", it, t.v0, t.v1, t.v2))
+		}
+		if t.n0 == -1 || t.n1 == -1 || t.n2 == -1 {
+			panic(fmt.Sprintf("wrong tri %d(%d %d %d)", it, t.n0, t.n1, t.n2))
+		}
+		find(TriIndex(it), t.v0)
+		find(TriIndex(it), t.v1)
+		find(TriIndex(it), t.v2)
+	}
+}
+
+func (cdt *CDT) report(at string, its ...TriIndex) {
+	for i, it := range its {
+		if it == -1 {
+			continue
+		}
+		var t = &cdt.MTri[it]
+		if t.v0 < 4 || t.v1 < 4 || t.v2 < 4 {
+			continue
+		}
+		if t.n0 == -1 || t.n1 == -1 || t.n2 == -1 {
+			panic(fmt.Sprintf("wrong tri %s: (%d %d) (%d %d %d) [%d %d %d]", at, i, it, t.n0, t.n1, t.n2, t.v0, t.v1, t.v2))
 		}
 	}
 }
@@ -153,6 +217,8 @@ func (cdt *CDT) flip(it0, it1 TriIndex) {
 	cdt.removeVertNeighbor(iv3, it1)
 	cdt.insertVertNeighbor(iv0, it1)
 	cdt.insertVertNeighbor(iv2, it0)
+
+	cdt.report("insertVertInTriangle", it0, it1, n0, n1, n2, n3)
 }
 
 func (cdt *CDT) needFlip(iv VertIndex, it TriIndex) bool {
@@ -206,6 +272,7 @@ func (cdt *CDT) insertVertInTriangle(iv VertIndex, it TriIndex) []TriIndex {
 	// change triangle neighbor
 	cdt.changeTriNeighbor(n1, it, it1)
 	cdt.changeTriNeighbor(n2, it, it2)
+	cdt.report("insertVertInTriangle", it, it1, it2, n0, n1, n2)
 	return []TriIndex{it, it1, it2}
 }
 
@@ -263,6 +330,7 @@ func (cdt *CDT) insertVertOnEdge(iv VertIndex, it0, it1 TriIndex) []TriIndex {
 	cdt.changeTriNeighbor(n1, it1, it3)
 	cdt.changeTriNeighbor(n3, it0, it2)
 
+	cdt.report("insertVertInTriangle", it0, it1, it2, it3, n0, n1, n2, n3)
 	return []TriIndex{it0, it1, it2, it3}
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"lib_chaos/mesh"
 	"math"
 )
 
@@ -42,6 +43,35 @@ func load() *Map {
 	return &m
 }
 
+func insertEdge(h *hash, ec *edgeCnt, a, b int, cnt int) {
+	var (
+		pa = mesh.Vert{X: h.pos[a].x, Z: h.pos[a].z}
+		pb = mesh.Vert{X: h.pos[b].x, Z: h.pos[b].z}
+	)
+	for e := range ec.m {
+		var (
+			px       = mesh.Vert{X: h.pos[e.a].x, Z: h.pos[e.a].z}
+			py       = mesh.Vert{X: h.pos[e.b].x, Z: h.pos[e.b].z}
+			s, t, ok = mesh.IntersectSegSeg2D(pa, pb, px, py)
+		)
+		if ok && s >= mesh.Eps && s <= 1-mesh.Eps && t >= mesh.Eps && t <= 1-mesh.Eps {
+			var (
+				c   = mesh.VInter(pa, pb, s)
+				cid = h.Get(c.X, c.Z, true)
+				r   = ec.Remove(e.a, e.b)
+			)
+			insertEdge(h, ec, e.a, cid, r)
+			insertEdge(h, ec, cid, e.b, r)
+			fmt.Printf("cross [%f %f]-[%f %f] with [%f %f]-[%f %f]\n", pa.X, pa.Z, pb.X, pb.Z,
+				px.X, px.Z, py.X, py.Z)
+			insertEdge(h, ec, a, cid, cnt)
+			insertEdge(h, ec, cid, b, cnt)
+			return
+		}
+	}
+	ec.Insert(a, b, cnt)
+}
+
 func process(m *Map) {
 	var h hash
 	var e edgeCnt
@@ -55,15 +85,11 @@ func process(m *Map) {
 				first = id
 			}
 			if last != -1 {
-				if e.Insert(last, id) {
-					fmt.Println(p.PolygonIndex)
-				}
+				insertEdge(&h, &e, last, id, 1)
 			}
 			last = id
 		}
-		if e.Insert(last, first) {
-			fmt.Println(p.PolygonIndex)
-		}
+		insertEdge(&h, &e, last, first, 1)
 	}
 	fmt.Println(len(h.pos), e.Cnt())
 	for _, p := range h.pos {
@@ -98,14 +124,25 @@ func (e *edgeCnt) Cnt() int {
 	return cnt
 }
 
-func (e *edgeCnt) Insert(a, b int) bool {
+func (e *edgeCnt) Remove(a, b int) (cnt int) {
 	if a > b {
 		a, b = b, a
 	} else if a == b {
-		return false
+		return 0
 	}
-	e.m[edge{a: a, b: b}]++
-	return a == 5108 && b == 5109
+	cnt = e.m[edge{a: a, b: b}]
+	delete(e.m, edge{a: a, b: b})
+	return cnt
+}
+
+func (e *edgeCnt) Insert(a, b int, cnt int) {
+	if a > b {
+		a, b = b, a
+	} else if a == b {
+		return
+	}
+	e.m[edge{a: a, b: b}] += cnt
+	return
 }
 
 type item struct {
@@ -158,5 +195,6 @@ func (h *hash) find(x, z float64) (int, int) {
 }
 
 func round(x float64) float64 {
+	//return x
 	return math.Round(x*8.0) / 8.0
 }
