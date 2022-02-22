@@ -34,8 +34,8 @@ func (nav *NavMesh) Svg(max mesh.Vert, s, t mesh.Vert, path []mesh.Vert) *bytes.
 	}
 	buf.WriteString(fmt.Sprintf("<circle cx=\"%f\" cy=\"%f\" r=\"0.4\" stroke=\"black\" stroke-width=\"0.05\" fill=\"red\" />\n", s.X, s.Z))
 	buf.WriteString(fmt.Sprintf("<circle cx=\"%f\" cy=\"%f\" r=\"0.4\" stroke=\"black\" stroke-width=\"0.05\" fill=\"red\" />\n", t.X, t.Z))
-	buf.WriteString(fmt.Sprintf("<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" style=\"stroke:red;stroke-width:0.25\" />\n",
-		s.X, s.Z, t.X, t.Z))
+	//buf.WriteString(fmt.Sprintf("<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" style=\"stroke:red;stroke-width:0.25\" />\n",
+	//	s.X, s.Z, t.X, t.Z))
 	for i := 1; i < len(path); i++ {
 		var v0, v1 = path[i-1], path[i]
 		buf.WriteString(fmt.Sprintf("<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" style=\"stroke:red;stroke-width:0.25\" />\n",

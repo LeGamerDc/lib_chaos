@@ -66,3 +66,17 @@ func (nav *NavMesh) getPortal(fromRef, toRef int32) (left, right mesh.Vert, ok b
 	}
 	return mesh.NilVert, mesh.NilVert, false
 }
+
+func (nav *NavMesh) FindMesh(v mesh.Vert) int32 {
+	for id, t := range nav.MTri {
+		var (
+			v0 = nav.MVert[t.Vs[0]]
+			v1 = nav.MVert[t.Vs[1]]
+			v2 = nav.MVert[t.Vs[2]]
+		)
+		if _, ok := mesh.VHeightOnTriangle(v, v0, v1, v2); ok {
+			return int32(id)
+		}
+	}
+	return -1
+}

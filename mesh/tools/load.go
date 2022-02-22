@@ -22,8 +22,8 @@ func read() *cdt.CDT {
 		if e != nil {
 			panic(fmt.Sprintf("v %d %s", i, e.Error()))
 		}
-		x *= 100
-		z *= 100
+		//x *= 100
+		//z *= 100
 		ps = append(ps, mesh.Vert{X: x, Z: z})
 		min.X = math.Min(min.X, x)
 		min.Z = math.Min(min.Z, z)
