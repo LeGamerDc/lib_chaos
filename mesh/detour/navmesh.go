@@ -23,6 +23,16 @@ type NavMesh struct {
 	MLink []Link
 }
 
+func (n *NavMesh) InsertEdge(i, j, e int32) {
+	var l = len(n.MLink)
+	n.MLink = append(n.MLink, Link{
+		ToRef: j,
+		Next:  n.MPoly[i].Link,
+		Edge:  e,
+	})
+	n.MPoly[i].Link = int32(l)
+}
+
 func (n *NavMesh) getPortal(fromRef, toRef int32) (left, right mesh.Vert, ok bool) {
 	for l := n.MPoly[fromRef].Link; l != -1; l = n.MLink[l].Next {
 		if n.MLink[l].ToRef == toRef {

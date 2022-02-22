@@ -1,10 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"lib_chaos/common"
+	"golang.org/x/exp/slices"
 )
 
 func main() {
-	fmt.Println(common.ToSet([]int{1, 2, 3}))
+	slices.IndexFunc()
 }

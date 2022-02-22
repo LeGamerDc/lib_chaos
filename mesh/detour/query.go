@@ -1,7 +1,6 @@
 package detour
 
 import (
-	"fmt"
 	"lib_chaos/mesh"
 )
 
@@ -37,7 +36,6 @@ func (q *Query) FindPath(startPos, endPos mesh.Vert, result QueryResult) bool {
 	)
 	startRef, startPos, ok = q.mesh.LocatePoly(startPos)
 	endRef, endPos, _ = q.mesh.LocatePoly(endPos)
-	fmt.Println(startPos, endPos)
 	q.clear()
 	if _, _, ok = q.findPath(startRef, endRef, startPos, endPos); !ok {
 		return false
@@ -81,7 +79,7 @@ func (q *Query) pullPath(startRef, endRef int32, startPos, endPos mesh.Vert, res
 	var finalRef int32 = -1
 	if len(q.nodePath) > 1 {
 		var (
-			portalApex, portalLeft, portalRight mesh.Vert
+			portalApex, portalLeft, portalRight = startPos, startPos, startPos
 			left, right                         mesh.Vert
 			apexIndex, leftIndex, rightIndex    int
 			ok                                  bool
@@ -100,44 +98,39 @@ func (q *Query) pullPath(startRef, endRef int32, startPos, endPos mesh.Vert, res
 				left, right = endPos, endPos
 			}
 			// handle left
-			if mesh.TriArea2D(portalApex, portalLeft, left) >= 0 { // tighten left
-				if mesh.VEqual(portalApex, portalLeft) || mesh.TriArea2D(portalApex, portalRight, left) < mesh.Eps*mesh.Eps {
+			if mesh.TriArea2D(portalApex, portalLeft, left) <= 0 { // tighten left
+				if mesh.VEqual(portalApex, portalLeft) || mesh.TriArea2D(portalApex, portalRight, left) > 0 {
 					portalLeft = left
+					leftIndex = i
 				} else {
-					if !q.appendPortal(apexIndex, rightIndex, portalRight, result) {
-						return false
-					}
 					portalApex = portalRight
+					portalLeft = portalApex
+					portalRight = portalApex
+					apexIndex = rightIndex
+					leftIndex = apexIndex
+					rightIndex = apexIndex
 					result.Append(portalApex.X, portalApex.Y, portalApex.Z)
-					portalLeft, portalRight = portalApex, portalApex
-					apexIndex, leftIndex = rightIndex, rightIndex
-
-					//restart
 					i = apexIndex
 					continue
 				}
 			}
 			// handle right
-			if mesh.TriArea2D(portalApex, portalRight, right) <= 0 { //tighten right
-				if mesh.VEqual(portalApex, portalRight) || mesh.TriArea2D(portalApex, portalLeft, right) > -mesh.Eps*mesh.Eps {
+			if mesh.TriArea2D(portalApex, portalRight, right) >= 0 { //tighten right
+				if mesh.VEqual(portalApex, portalRight) || mesh.TriArea2D(portalApex, portalLeft, right) < 0 {
 					portalRight = right
+					rightIndex = i
 				} else {
-					if !q.appendPortal(apexIndex, leftIndex, portalLeft, result) {
-						return false
-					}
 					portalApex = portalLeft
+					portalLeft = portalApex
+					portalRight = portalApex
+					apexIndex = leftIndex
+					leftIndex = apexIndex
+					rightIndex = apexIndex
 					result.Append(portalApex.X, portalApex.Y, portalApex.Z)
-					portalLeft, portalRight = portalApex, portalApex
-					apexIndex, rightIndex = leftIndex, leftIndex
-
-					//restart
 					i = apexIndex
 					continue
 				}
 			}
-		}
-		if !q.appendPortal(apexIndex, len(q.nodePath)-1, endPos, result) {
-			return false
 		}
 	}
 	if finalRef == endRef {
@@ -183,9 +176,6 @@ func (q *Query) findPath(startRef, endRef int32, startPos, endPos mesh.Vert) (
 		for l := bestPoly.Link; l != -1; l = q.mesh.MLink[l].Next {
 			var neighborRef = q.mesh.MLink[l].ToRef
 			if neighborRef == parentRef { // skip parent
-				continue
-			}
-			if q.mesh.MPoly[neighborRef].AreaId != bestPoly.AreaId {
 				continue
 			}
 			neighborNode = q.nodePool.getNode(neighborRef)
