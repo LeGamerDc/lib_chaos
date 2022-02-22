@@ -12,6 +12,7 @@ require (
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.0-alpha.0 // indirect
+	golang.org/x/exp v0.0.0-20220218215828-6cf2b201936e // indirect
 	golang.org/x/image v0.0.0-20210504121937-7319ad40d33e // indirect
 	google.golang.org/grpc v1.32.0 // indirect
 )
