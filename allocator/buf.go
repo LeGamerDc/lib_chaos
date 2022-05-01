@@ -49,11 +49,11 @@ func MallocSlice[T any](buf *Buf, l, c int) []T {
 		x     T
 		size  = int(unsafe.Sizeof(x)) * c
 		align = int(unsafe.Alignof(x))
-		hdr   = Malloc[reflect.SliceHeader](buf)
+		hdr   reflect.SliceHeader
 	)
 	hdr.Len, hdr.Cap = l, c
 	hdr.Data = uintptr(alloc(buf, align, size))
-	return *(*[]T)(unsafe.Pointer(hdr))
+	return *(*[]T)(unsafe.Pointer(&hdr))
 }
 
 // CopyString reference strings.Clone

@@ -22,8 +22,21 @@ type Allocator struct {
 	buf *Buf
 }
 
+func (a *Allocator) Init() {
+	p := a.newPage()
+	a.buf = &Buf{
+		a:  a,
+		cp: p,
+		pp: nil,
+	}
+}
+
 func (a *Allocator) newPage() *page {
-	p := new(page)
+	if a.cp != nil {
+		decPage(&a.cp.cnt)
+	}
+	p := pagePool.Get().(*page)
+	p.cnt, p.off = 1, 0
 	a.cp = p
 	return p
 }
