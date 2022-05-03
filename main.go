@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"lib_chaos/allocator"
+	"lib_chaos/alloc"
 	"unsafe"
 )
 
 func main() {
-	fmt.Println(size[allocator.Msg]())
+	fmt.Println(size[alloc.Msg]())
 }
 
 func size[T any]() int {

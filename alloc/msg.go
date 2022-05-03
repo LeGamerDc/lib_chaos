@@ -1,4 +1,4 @@
-package allocator
+package alloc
 
 type Msg struct {
 	c1, c2 *int64

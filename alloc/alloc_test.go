@@ -1,4 +1,4 @@
-package allocator
+package alloc
 
 import (
 	"fmt"

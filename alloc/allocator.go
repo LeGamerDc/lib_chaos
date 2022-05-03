@@ -1,4 +1,4 @@
-package allocator
+package alloc
 
 import (
 	"sync"
@@ -22,6 +22,7 @@ type Allocator struct {
 	buf *Buf
 }
 
+// Init Allocator must Init before use
 func (a *Allocator) Init() {
 	p := a.newPage()
 	a.buf = &Buf{
@@ -31,6 +32,8 @@ func (a *Allocator) Init() {
 	}
 }
 
+// allocator will occupy page's cnt like any other object
+// to avoid allocator.cp been put to pagePool
 func (a *Allocator) newPage() *page {
 	if a.cp != nil {
 		decPage(&a.cp.cnt)
@@ -46,11 +49,21 @@ func (a *Allocator) getBuf() *Buf {
 	return a.buf
 }
 
+// CreateMsg will supply a Buf for malloc, user invoke CreateMsg
+// and send a function to use Buf to create pb_msg
+// 1. user `MUST` make sure all object in Msg have the same lifetime
+// 2. user `MUST NOT` call CreateMsg in parallel
+// 3. user `MUST` make sure every Msg do not use more than one page
 func (a *Allocator) CreateMsg(f func(*Buf) interface{}) *Msg {
 	buf := a.getBuf()
 	ptr := f(buf)
+	// below code run same as:
+	// msg := &Msg{msg: ptr, c1: &buf.cp.cnt}
+	// however, since Msg have the same lifetime with its internal msg
+	// we could create Msg on unmanaged memory too.
+	msg := Malloc[Msg](buf)
+	*msg = Msg{msg: ptr, c1: &buf.cp.cnt}
 	atomic.AddInt64(&buf.cp.cnt, 1)
-	msg := &Msg{msg: ptr, c1: &buf.cp.cnt}
 	if buf.pp != nil {
 		atomic.AddInt64(&buf.pp.cnt, 1)
 		msg.c2 = &buf.pp.cnt
