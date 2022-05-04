@@ -11,6 +11,11 @@ const (
 	pageSize       = int(pageStructSize - unsafe.Sizeof(int64(0)) - unsafe.Sizeof(0))
 )
 
+// page is struct supply unmanaged memory alloc.
+// it behaves like a `reference count pointer`, when page.cnt dec to zero,
+// the page will be recycled to a page pool.
+// however, if the cnt are never dec to zero(due to program bugs), page will
+// be `gc`ed when no object keep reference of this page.
 type page struct {
 	cnt int64
 	off int

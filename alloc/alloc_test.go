@@ -1,7 +1,6 @@
 package alloc
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -28,9 +27,9 @@ func newData() *Data {
 		F3: 3,
 		F4: 4,
 		S1: make([]int, 0, 4),
-		S2: make([]int, 0, 4),
-		S3: make([]int, 0, 4),
-		S4: make([]int, 0, 4),
+		S2: make([]int, 0, 8),
+		S3: make([]int, 0, 12),
+		S4: make([]int, 0, 16),
 	}
 	feed(&d.S1, 4)
 	feed(&d.S2, 8)
@@ -72,6 +71,7 @@ type Escape interface {
 	call()
 }
 
+// use noinline to escape x
 //go:noinline
 func Use(x Escape) {
 	x.call()
@@ -92,7 +92,7 @@ func TestAlloc(t *testing.T) {
 			return p
 		})
 		Use(m.msg.(Escape))
-		fmt.Println(a.cp.off, a.cp.cnt)
+		//fmt.Println(a.cp.off, a.cp.cnt)
 		_ = m.Close()
 	}
 }
