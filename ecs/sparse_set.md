@@ -7,7 +7,7 @@ title: sparse set
 
 ***背景***：
 
-​	游戏服务器需要一种数据结构存储大量同类对象（比如 *castle，square* ），根据以往的游戏开发经验，对该数据结构提出以下基本抽象：
+​	游戏服务器需要一种数据结构存储大量同类对象（比如 *building，monster* ），根据以往的游戏开发经验，对该数据结构提出以下基本抽象：
 
 1. *set(obj)*: 存放一个对象，给出唯一的标志id
 2. *get(id)*: 给定id，定位到与该id绑定的对象地址
@@ -35,58 +35,7 @@ title: sparse set
 
 4. 考虑到我们的 *id* 还有其他的用途，预留 8 个bit的 tag字段来支持 *id* 的其他用于
 
-***实现***：
+***实现***:
 
 ​	参考[sparse set](https://github.com/LeGamerDc/lib_chaos/blob/master/ecs/sparse_set.go)
-
-**示例代码**：
-
-```go
-package main
-
-import (
-	"lib_chaos/ecs"
-	"math/rand"
-)
-
-const (
-	SquareSuffix = 3
-)
-
-type Square struct {
-	id       int64
-	troopCnt int64
-}
-
-func main() {
-	var (
-		sqs  = ecs.MakeSparseArray[Square](1024)
-		tick int32
-		m    = map[int64]int64{}
-	)
-	for tick = 0; tick < 10; tick++ {
-		for i := 0; i < 999; i++ {
-			id, sq := sqs.Place(tick, SquareSuffix)
-			sq.troopCnt = rand.Int63n(1000)
-			sq.id = id
-			m[id] = sq.troopCnt
-		}
-	}
-	for id, cnt := range m {
-		sq := sqs.Get(id)
-		if sq == nil || sq.troopCnt != cnt {
-			panic("not equal")
-		}
-	}
-	sqs.Foreach(func(sq *Square) {
-		if cnt, ok := m[sq.id]; !ok || cnt != sq.troopCnt {
-			panic("not equal")
-		}
-	})
-}
-```
-
----
-
-this lib belongs to *project 8 tick*
 
