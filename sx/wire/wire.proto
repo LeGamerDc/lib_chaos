@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "gogo.proto";
+
+option (gogoproto.goproto_unrecognized_all) = false;
+option (gogoproto.goproto_unkeyed_all)      = false;
+option (gogoproto.goproto_sizecache_all)    = false;
+option (gogoproto.goproto_getters_all)      = false;
+
+package wire;
+
+message Msg {
+  uint32 Seq      = 1;
+  CallType Type   = 2;
+  int32 Api       = 3;
+  int32 ErrCode   = 4;
+  bytes Data      = 5;
+
+  bytes Extra     = 6;  // for interception
+}
+
+enum CallType {
+  OneWay  = 0;
+  Call    = 1;
+  Reply   = 2;
+  Exception = 3;
+}
+
+
