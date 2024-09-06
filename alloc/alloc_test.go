@@ -1,6 +1,7 @@
 package alloc
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func newData() *Data {
 	return d
 }
 
-func newData2(buf *Buf) *Data {
+func newData2(buf *Allocator) *Data {
 	d := Malloc[Data](buf)
 	d.I1, d.I2, d.I3, d.I4 = 1, 2, 3, 4
 	d.F1, d.F2, d.F3, d.F4 = 1, 2, 3, 4
@@ -72,47 +73,45 @@ type Escape interface {
 }
 
 // use noinline to escape x
+//
 //go:noinline
 func Use(x Escape) {
 	x.call()
 }
 
 func TestAlloc(t *testing.T) {
-	var a = new(Allocator)
-	a.Init()
+	var buf = NewAllocator()
 	for i := 0; i < 10; i++ {
-		m := a.CreateMsg(func(buf *Buf) interface{} {
-			p := Malloc[Person](buf)
-			p.Name = "john"
-			p.Age = 18
-			p.Home = Malloc[House](buf)
-			p.Home.Addr = "aaeaeaesfe"
-			p.Home.Area = 169
-			p.Data = newData2(buf)
-			return p
-		})
-		Use(m.msg.(Escape))
+		p := Malloc[Person](buf)
+		p.Name = "john"
+		p.Age = 18
+		p.Home = Malloc[House](buf)
+		p.Home.Addr = "aaeaeaesfe"
+		p.Home.Area = 169
+		p.Data = newData2(buf)
+
+		Use(p)
 		//fmt.Println(a.cp.off, a.cp.cnt)
-		_ = m.Close()
 	}
+	fmt.Println(buf.cp.off)
 }
 
 func BenchmarkAlloc(b *testing.B) {
-	var a = new(Allocator)
-	a.Init()
+	var buf = NewAllocator()
 	for i := 0; i < b.N; i++ {
-		m := a.CreateMsg(func(buf *Buf) interface{} {
-			p := Malloc[Person](buf)
-			p.Name = "john"
-			p.Age = 18
-			p.Home = Malloc[House](buf)
-			p.Home.Addr = "aaeaeaesfe"
-			p.Home.Area = 169
-			p.Data = newData2(buf)
-			return p
-		})
-		Use(m.msg.(Escape))
-		_ = m.Close()
+		p := Malloc[Person](buf)
+		p.Name = "john"
+		p.Age = 18
+		p.Home = Malloc[House](buf)
+		p.Home.Addr = "aaeaeaesfe"
+		p.Home.Area = 169
+		p.Data = newData2(buf)
+		Use(p)
+
+		if i%1024 == 0 {
+			buf.Free()
+			buf = NewAllocator()
+		}
 	}
 }
 

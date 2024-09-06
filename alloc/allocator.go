@@ -1,87 +1,115 @@
 package alloc
 
 import (
+	"reflect"
 	"sync"
-	"sync/atomic"
 	"unsafe"
 )
 
 const (
-	pageStructSize = 16 * 1024 // 16KB
-	pageSize       = int(pageStructSize - unsafe.Sizeof(int64(0)) - unsafe.Sizeof(0))
+	pageStructSize = 512 * 1024 // 64KB
+	pageSize       = uintptr(pageStructSize - unsafe.Sizeof((*page)(nil)) - unsafe.Sizeof(0))
 )
 
 // page is struct supply unmanaged memory alloc.
-// it behaves like a `reference count pointer`, when page.cnt dec to zero,
-// the page will be recycled to a page pool.
-// however, if the cnt are never dec to zero(due to program bugs), page will
-// be `gc`ed when no object keep reference of this page.
 type page struct {
-	cnt int64
-	off int
-	buf [pageSize]byte
+	next *page
+	off  uintptr
+	buf  [pageSize]byte
 }
 
+// Allocator use cp as current page allocator
+// used store allocation full page
 type Allocator struct {
-	cp  *page
-	buf *Buf
+	cp   *page // cp is never nil
+	used *page
 }
 
-// Init Allocator must Init before use
-func (a *Allocator) Init() {
-	p := a.newPage()
-	a.buf = &Buf{
-		a:  a,
-		cp: p,
-		pp: nil,
+func NewAllocator() *Allocator {
+	return &Allocator{
+		cp: getPage(),
 	}
 }
 
-// allocator will occupy page's cnt like any other object
-// to avoid allocator.cp been put to pagePool
-func (a *Allocator) newPage() *page {
-	if a.cp != nil {
-		decPage(&a.cp.cnt)
+func (a *Allocator) Free() {
+	putPage(a.cp)
+	for p := a.used; p != nil; {
+		next := p.next
+		putPage(p)
+		p = next
 	}
-	p := pagePool.Get().(*page)
-	p.cnt, p.off = 1, 0
-	a.cp = p
-	return p
 }
 
-func (a *Allocator) getBuf() *Buf {
-	a.buf.pp = nil
-	return a.buf
+func (a *Allocator) refill() *page {
+	var p *page
+	p, a.cp = a.cp, getPage()
+	if p != nil {
+		a.used, p.next = p, a.used
+	}
+	return a.cp
 }
 
-// CreateMsg will supply a Buf for malloc, user invoke CreateMsg
-// and send a function to use Buf to create pb_msg
-// 1. user `MUST` make sure all object in Msg have the same lifetime
-// 2. user `MUST NOT` call CreateMsg in parallel
-// 3. user `MUST` make sure every Msg do not use more than one page
-func (a *Allocator) CreateMsg(f func(*Buf) interface{}) *Msg {
-	buf := a.getBuf()
-	ptr := f(buf)
-	// below code run same as:
-	// msg := &Msg{msg: ptr, c1: &buf.cp.cnt}
-	// however, since Msg have the same lifetime with its internal msg
-	// we could create Msg on unmanaged memory too.
-	msg := Malloc[Msg](buf)
-	*msg = Msg{msg: ptr, c1: &buf.cp.cnt}
-	atomic.AddInt64(&buf.cp.cnt, 1)
-	if buf.pp != nil {
-		atomic.AddInt64(&buf.pp.cnt, 1)
-		msg.c2 = &buf.pp.cnt
+func (a *Allocator) alloc(align, size uintptr) unsafe.Pointer {
+	if size > pageSize { // case 1. size > page size
+		return nil
 	}
-	return msg
+	p := a.cp
+	index := _align(p.off, align)
+	if index+size > pageSize {
+		p = a.refill()
+		index = 0
+	}
+	p.off = index + size
+	return unsafe.Pointer(&p.buf[index])
 }
 
-func decPage(x *int64) {
-	if atomic.AddInt64(x, -1) == 0 {
-		pagePool.Put((*page)(unsafe.Pointer(x)))
-	}
+func Malloc[T any](a *Allocator) *T {
+	var (
+		x     T
+		size  = unsafe.Sizeof(x)
+		align = unsafe.Alignof(x)
+	)
+	return (*T)(a.alloc(align, size))
+}
+
+func MallocSlice[T any](a *Allocator, l, c int) []T {
+	var (
+		x     T
+		size  = unsafe.Sizeof(x) * uintptr(c)
+		align = unsafe.Alignof(x)
+		hdr   reflect.SliceHeader
+	)
+	hdr.Len, hdr.Cap = l, c
+	hdr.Data = uintptr(a.alloc(align, size))
+	return *(*[]T)(unsafe.Pointer(&hdr))
+}
+
+func CopyString(a *Allocator, s string) string {
+	var (
+		size = len(s)
+		b    = MallocSlice[byte](a, size, size)
+	)
+	copy(b, s)
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func _align(s, a uintptr) uintptr {
+	return (s + a - 1) &^ (a - 1)
 }
 
 var pagePool = sync.Pool{
 	New: func() any { return new(page) },
+}
+
+func getPage() *page {
+	p := pagePool.Get().(*page)
+	p.off = 0
+	return p
+}
+
+func putPage(p *page) {
+	if p != nil {
+		p.next = nil
+		pagePool.Put(p)
+	}
 }
