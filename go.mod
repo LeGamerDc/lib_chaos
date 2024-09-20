@@ -1,4 +1,4 @@
-module lib_chaos
+module github.com/LeGamerDc/lib_chaos
 
 go 1.23
 
